@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -27,10 +28,26 @@ func CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("Created User: Name=%s, ID=%v\n", user.Name, user.ID)
+	if user.Name == "" || user.Address == "" {
+		http.Error(w, "Name and address are required", http.StatusBadRequest)
+		return
+	}
 
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "User created successfully!")
+	query := `
+		INSERT INTO customers (name, address, created_at) 
+		VALUES ($1, $2, $3) 
+		RETURNING id, created_at`
+
+	err = config.DB.QueryRow(query, user.Name, user.Address, time.Now()).Scan(&user.ID, &user.CreatedAt)
+	if err != nil {
+		fmt.Printf("Database error: %v\n", err)
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(user)
 }
 
 func GetCustomerByID(w http.ResponseWriter, r *http.Request) {
