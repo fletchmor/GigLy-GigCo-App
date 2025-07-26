@@ -8,6 +8,7 @@ import (
 )
 
 func GetHandlers(r chi.Router) {
+	r.Get("/health", api.HealthCheck)
 	r.Get("/", middleware.ServeEmailForm)
 	r.Get("/email-submit", middleware.HandleEmailSubmission)
 	r.Post("/api/v1/users/create", api.CreateUser)

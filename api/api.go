@@ -14,6 +14,29 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+func HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	
+	// Test database connection
+	err := config.DB.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "unhealthy",
+			"database": "disconnected",
+			"error": err.Error(),
+		})
+		return
+	}
+	
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "healthy",
+		"database": "connected",
+		"timestamp": time.Now(),
+	})
+}
+
 func CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user model.User
 

@@ -15,10 +15,11 @@ import (
 )
 
 func main() {
-	config.ConnectDB()
+	// Load .env file if it exists (optional for Docker environments)
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file:", err)
+		log.Println("No .env file found, using environment variables")
 	}
+	config.ConnectDB()
 	port := os.Getenv("PORT")
 	serverAddress := fmt.Sprintf(":%s", port)
 	NewServer := chi.NewRouter()

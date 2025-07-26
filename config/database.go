@@ -15,8 +15,9 @@ var DB *sql.DB
 func ConnectDB() {
 	var err error
 
+	// Load .env file if it exists (optional for Docker environments)
 	if err := godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file:", err)
+		log.Println("No .env file found in database config, using environment variables")
 	}
 
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",

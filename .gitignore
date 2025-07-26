@@ -1,0 +1,5 @@
+CLAUDE.md
+.env
+*.log
+*.tmp
+.DS_Store
