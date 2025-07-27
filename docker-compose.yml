@@ -6,10 +6,10 @@ services:
     environment:
       - PORT=8080
       - DB_HOST=postgres
-      - DB_PORT=5432
+      - DB_PORT=5432  # Corrected to match the container's listening port
       - DB_NAME=gigco
       - DB_USER=postgres
-      - DB_PASSWORD=password
+      - DB_PASSWORD=bamboo
       - DB_SSLMODE=disable
     depends_on:
       postgres:
@@ -25,9 +25,9 @@ services:
     environment:
       - POSTGRES_DB=gigco
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=bamboo
     ports:
-      - "5432:5432"  # Keep your current port mapping
+      - "5433:5432"  # Host port 5433 maps to container port 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
