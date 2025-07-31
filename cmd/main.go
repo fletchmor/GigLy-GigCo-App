@@ -25,6 +25,7 @@ func main() {
 	NewServer := chi.NewRouter()
 	NewServer.Use(middleware.Logger)
 	handler.GetHandlers(NewServer)
+	handler.PostHandlers(NewServer)
 	log.Fatal(http.ListenAndServe(serverAddress, NewServer))
 	log.Println("Server starting")
 }

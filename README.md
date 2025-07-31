@@ -168,7 +168,7 @@ SELECT * FROM customers;
 - [x] Postman test suite
 
 ### Phase 2: Core Business Logic (Next)
-- [ ] Enhanced database schema (jobs, transactions, schedules)
+- [x] Enhanced database schema (jobs, transactions, schedules)
 - [ ] User role management (Consumer, Gig Worker, Admin)
 - [ ] Job posting and acceptance workflow
 - [ ] Basic transaction system
