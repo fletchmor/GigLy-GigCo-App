@@ -56,6 +56,89 @@ type Transaction struct {
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
+type Job struct {
+	ID                     int        `json:"id"`
+	UUID                   string     `json:"uuid"`
+	ConsumerID             int        `json:"consumer_id"`
+	GigWorkerID            *int       `json:"gig_worker_id,omitempty"`
+	Title                  string     `json:"title"`
+	Description            string     `json:"description"`
+	Category               string     `json:"category,omitempty"`
+	LocationAddress        string     `json:"location_address,omitempty"`
+	LocationLatitude       *float64   `json:"location_latitude,omitempty"`
+	LocationLongitude      *float64   `json:"location_longitude,omitempty"`
+	EstimatedDurationHours *float64   `json:"estimated_duration_hours,omitempty"`
+	PayRatePerHour         *float64   `json:"pay_rate_per_hour,omitempty"`
+	TotalPay               *float64   `json:"total_pay,omitempty"`
+	Status                 string     `json:"status"`
+	ScheduledStart         *time.Time `json:"scheduled_start,omitempty"`
+	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
+	ActualStart            *time.Time `json:"actual_start,omitempty"`
+	ActualEnd              *time.Time `json:"actual_end,omitempty"`
+	Notes                  string     `json:"notes,omitempty"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
+}
+
+type JobCreateRequest struct {
+	Title                  string     `json:"title"`
+	Description            string     `json:"description"`
+	Category               string     `json:"category,omitempty"`
+	LocationAddress        string     `json:"location_address,omitempty"`
+	LocationLatitude       *float64   `json:"location_latitude,omitempty"`
+	LocationLongitude      *float64   `json:"location_longitude,omitempty"`
+	EstimatedDurationHours *float64   `json:"estimated_duration_hours,omitempty"`
+	PayRatePerHour         *float64   `json:"pay_rate_per_hour,omitempty"`
+	TotalPay               *float64   `json:"total_pay,omitempty"`
+	ScheduledStart         *time.Time `json:"scheduled_start,omitempty"`
+	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
+	Notes                  string     `json:"notes,omitempty"`
+}
+
+type JobUpdateRequest struct {
+	Title                  *string    `json:"title,omitempty"`
+	Description            *string    `json:"description,omitempty"`
+	Category               *string    `json:"category,omitempty"`
+	LocationAddress        *string    `json:"location_address,omitempty"`
+	LocationLatitude       *float64   `json:"location_latitude,omitempty"`
+	LocationLongitude      *float64   `json:"location_longitude,omitempty"`
+	EstimatedDurationHours *float64   `json:"estimated_duration_hours,omitempty"`
+	PayRatePerHour         *float64   `json:"pay_rate_per_hour,omitempty"`
+	TotalPay               *float64   `json:"total_pay,omitempty"`
+	ScheduledStart         *time.Time `json:"scheduled_start,omitempty"`
+	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
+	Notes                  *string    `json:"notes,omitempty"`
+}
+
+type JobResponse struct {
+	Job
+	Consumer  *UserSummary `json:"consumer,omitempty"`
+	GigWorker *UserSummary `json:"gig_worker,omitempty"`
+	Distance  *float64     `json:"distance_km,omitempty"`
+}
+
+type UserSummary struct {
+	ID            int      `json:"id"`
+	UUID          string   `json:"uuid"`
+	Name          string   `json:"name"`
+	AverageRating *float64 `json:"average_rating,omitempty"`
+	TotalJobs     int      `json:"total_jobs,omitempty"`
+}
+
+type JobsListResponse struct {
+	Jobs       []JobResponse `json:"jobs"`
+	Pagination Pagination    `json:"pagination"`
+}
+
+type Pagination struct {
+	Page    int  `json:"page"`
+	Limit   int  `json:"limit"`
+	Total   int  `json:"total"`
+	Pages   int  `json:"pages"`
+	HasNext bool `json:"has_next"`
+	HasPrev bool `json:"has_prev"`
+}
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
