@@ -47,6 +47,8 @@ services:
       - "8082:8080"
     depends_on:
       - postgres
+    networks:
+      - gigco-network  # Add this line to connect to the same network
     restart: unless-stopped
 
 
@@ -56,4 +58,3 @@ volumes:
 networks:
   gigco-network:
     driver: bridge
-  
