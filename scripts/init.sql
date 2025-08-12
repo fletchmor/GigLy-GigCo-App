@@ -5,6 +5,9 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Drop existing tables if they exist (be careful in production!)
+DROP TABLE IF EXISTS worker_services CASCADE;
+DROP TABLE IF EXISTS worker_templates CASCADE;
+DROP TABLE IF EXISTS worker_profiles CASCADE;
 DROP TABLE IF EXISTS job_reviews CASCADE;
 DROP TABLE IF EXISTS notifications CASCADE;
 DROP TABLE IF EXISTS notification_preferences CASCADE;
@@ -23,6 +26,8 @@ DROP TYPE IF EXISTS job_status CASCADE;
 DROP TYPE IF EXISTS transaction_status CASCADE;
 DROP TYPE IF EXISTS notification_type CASCADE;
 DROP TYPE IF EXISTS notification_status CASCADE;
+DROP TYPE IF EXISTS worker_verification_status CASCADE;
+DROP TYPE IF EXISTS service_category CASCADE;
 
 -- Create enum types for better data integrity
 CREATE TYPE user_role AS ENUM ('consumer', 'gig_worker', 'admin');
@@ -30,6 +35,8 @@ CREATE TYPE job_status AS ENUM ('posted', 'accepted', 'in_progress', 'completed'
 CREATE TYPE transaction_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE notification_type AS ENUM ('job_posted', 'job_accepted', 'job_completed', 'payment_received', 'system_message');
 CREATE TYPE notification_status AS ENUM ('unread', 'read', 'archived');
+CREATE TYPE worker_verification_status AS ENUM ('pending', 'verified', 'rejected', 'suspended');
+CREATE TYPE service_category AS ENUM ('cleaning', 'maintenance', 'delivery', 'personal_care', 'pet_care', 'tech_support', 'tutoring', 'transportation', 'other');
 
 -- ==============================================
 -- CORE TABLES
@@ -222,6 +229,92 @@ CREATE TABLE customers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- GigWorker table (consolidated worker information)
+CREATE TABLE gigworkers (
+    id SERIAL PRIMARY KEY,
+    uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    latitude DECIMAL(10, 8),
+    longitude DECIMAL(11, 8),
+    place_id VARCHAR(255),
+    role VARCHAR(50) DEFAULT 'gig_worker',
+    is_active BOOLEAN DEFAULT true,
+    email_verified BOOLEAN DEFAULT false,
+    phone_verified BOOLEAN DEFAULT false,
+    bio TEXT,
+    hourly_rate DECIMAL(10, 2),
+    experience_years INTEGER,
+    verification_status worker_verification_status DEFAULT 'pending',
+    background_check_date DATE,
+    service_radius_miles DECIMAL(5, 2) DEFAULT 25.0,
+    availability_notes TEXT,
+    emergency_contact_name VARCHAR(255),
+    emergency_contact_phone VARCHAR(20),
+    emergency_contact_relationship VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- ==============================================
+-- WORKER-SPECIFIC TABLES
+-- ==============================================
+
+-- Worker profiles table (extends people with worker-specific data)
+CREATE TABLE worker_profiles (
+    id SERIAL PRIMARY KEY,
+    worker_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    bio TEXT,
+    hourly_rate DECIMAL(10, 2),
+    experience_years INTEGER,
+    verification_status worker_verification_status DEFAULT 'pending',
+    background_check_date DATE,
+    insurance_info JSONB,
+    certifications JSONB,
+    service_radius_miles DECIMAL(5, 2) DEFAULT 25.0,
+    availability_notes TEXT,
+    emergency_contact_name VARCHAR(255),
+    emergency_contact_phone VARCHAR(20),
+    emergency_contact_relationship VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(worker_id)
+);
+
+-- Worker templates table for predefined job categories
+CREATE TABLE worker_templates (
+    id SERIAL PRIMARY KEY,
+    uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    category service_category NOT NULL,
+    base_hourly_rate DECIMAL(10, 2) NOT NULL,
+    estimated_duration_hours DECIMAL(4, 2),
+    required_equipment TEXT[],
+    required_skills TEXT[],
+    service_instructions TEXT,
+    cancellation_policy TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Worker services table (many-to-many relationship between workers and templates)
+CREATE TABLE worker_services (
+    id SERIAL PRIMARY KEY,
+    worker_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+    template_id INTEGER NOT NULL REFERENCES worker_templates(id) ON DELETE CASCADE,
+    custom_hourly_rate DECIMAL(10, 2),
+    is_available BOOLEAN DEFAULT true,
+    experience_level VARCHAR(50),
+    special_notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(worker_id, template_id)
+);
+
 -- ==============================================
 -- INDEXES FOR PERFORMANCE
 -- ==============================================
@@ -255,6 +348,31 @@ CREATE INDEX idx_schedules_worker_availability ON schedules(gig_worker_id, is_av
 CREATE INDEX idx_customers_name ON customers(name);
 CREATE INDEX idx_customers_created_at ON customers(created_at);
 
+-- GigWorkers table indexes
+CREATE INDEX idx_gigworkers_email ON gigworkers(email);
+CREATE INDEX idx_gigworkers_uuid ON gigworkers(uuid);
+CREATE INDEX idx_gigworkers_active ON gigworkers(is_active) WHERE is_active = true;
+CREATE INDEX idx_gigworkers_verification_status ON gigworkers(verification_status);
+CREATE INDEX idx_gigworkers_hourly_rate ON gigworkers(hourly_rate);
+CREATE INDEX idx_gigworkers_location ON gigworkers(latitude, longitude) WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
+
+-- Worker profiles indexes
+CREATE INDEX idx_worker_profiles_worker_id ON worker_profiles(worker_id);
+CREATE INDEX idx_worker_profiles_verification_status ON worker_profiles(verification_status);
+CREATE INDEX idx_worker_profiles_hourly_rate ON worker_profiles(hourly_rate);
+
+-- Worker templates indexes
+CREATE INDEX idx_worker_templates_uuid ON worker_templates(uuid);
+CREATE INDEX idx_worker_templates_category ON worker_templates(category);
+CREATE INDEX idx_worker_templates_active ON worker_templates(is_active) WHERE is_active = true;
+CREATE INDEX idx_worker_templates_base_rate ON worker_templates(base_hourly_rate);
+
+-- Worker services indexes
+CREATE INDEX idx_worker_services_worker_id ON worker_services(worker_id);
+CREATE INDEX idx_worker_services_template_id ON worker_services(template_id);
+CREATE INDEX idx_worker_services_available ON worker_services(is_available) WHERE is_available = true;
+CREATE INDEX idx_worker_services_worker_template ON worker_services(worker_id, template_id);
+
 -- ==============================================
 -- CONSTRAINTS
 -- ==============================================
@@ -283,6 +401,55 @@ CREATE UNIQUE INDEX idx_user_payment_methods_one_default
 ON user_payment_methods(user_id) 
 WHERE is_default = true;
 
+-- Worker-specific constraints
+-- Ensure worker profiles only exist for gig_worker role
+ALTER TABLE worker_profiles
+ADD CONSTRAINT chk_worker_profiles_role 
+CHECK (EXISTS (
+    SELECT 1 FROM people p 
+    WHERE p.id = worker_profiles.worker_id 
+    AND p.role = 'gig_worker'
+));
+
+-- Ensure hourly rates are positive
+ALTER TABLE worker_profiles
+ADD CONSTRAINT chk_worker_profiles_positive_rate 
+CHECK (hourly_rate IS NULL OR hourly_rate > 0);
+
+ALTER TABLE worker_templates
+ADD CONSTRAINT chk_worker_templates_positive_rate 
+CHECK (base_hourly_rate > 0);
+
+ALTER TABLE worker_services
+ADD CONSTRAINT chk_worker_services_positive_rate 
+CHECK (custom_hourly_rate IS NULL OR custom_hourly_rate > 0);
+
+-- Ensure service radius is reasonable
+ALTER TABLE worker_profiles
+ADD CONSTRAINT chk_worker_profiles_service_radius 
+CHECK (service_radius_miles >= 1 AND service_radius_miles <= 100);
+
+-- Ensure experience years is reasonable
+ALTER TABLE worker_profiles
+ADD CONSTRAINT chk_worker_profiles_experience_years 
+CHECK (experience_years IS NULL OR (experience_years >= 0 AND experience_years <= 50));
+
+-- GigWorkers table constraints
+-- Ensure hourly rates are positive
+ALTER TABLE gigworkers
+ADD CONSTRAINT chk_gigworkers_positive_rate 
+CHECK (hourly_rate IS NULL OR hourly_rate > 0);
+
+-- Ensure service radius is reasonable
+ALTER TABLE gigworkers
+ADD CONSTRAINT chk_gigworkers_service_radius 
+CHECK (service_radius_miles >= 1 AND service_radius_miles <= 100);
+
+-- Ensure experience years is reasonable
+ALTER TABLE gigworkers
+ADD CONSTRAINT chk_gigworkers_experience_years 
+CHECK (experience_years IS NULL OR (experience_years >= 0 AND experience_years <= 50));
+
 -- ==============================================
 -- TRIGGERS FOR UPDATED_AT
 -- ==============================================
@@ -308,6 +475,10 @@ CREATE TRIGGER update_notifications_updated_at BEFORE UPDATE ON notifications FO
 CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON notification_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_job_reviews_updated_at BEFORE UPDATE ON job_reviews FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_customers_updated_at BEFORE UPDATE ON customers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_gigworkers_updated_at BEFORE UPDATE ON gigworkers FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_worker_profiles_updated_at BEFORE UPDATE ON worker_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_worker_templates_updated_at BEFORE UPDATE ON worker_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_worker_services_updated_at BEFORE UPDATE ON worker_services FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ==============================================
 -- SEED DATA
@@ -359,6 +530,139 @@ CROSS JOIN (
 ) nt
 ON CONFLICT (user_id, type) DO NOTHING;
 
+-- Insert worker templates for common gig economy services
+INSERT INTO worker_templates (name, description, category, base_hourly_rate, estimated_duration_hours, required_equipment, required_skills, service_instructions, cancellation_policy) VALUES 
+    ('Car Wash & Detailing', 'Professional car washing and interior/exterior detailing services', 'cleaning', 25.00, 2.0, 
+     ARRAY['car wash soap', 'microfiber towels', 'vacuum cleaner', 'detailing brushes'], 
+     ARRAY['attention to detail', 'car care knowledge', 'customer service'], 
+     'Arrive on time, inspect vehicle condition, provide before/after photos, ensure customer satisfaction',
+     '24-hour cancellation notice required'),
+    
+    ('House Cleaning', 'Comprehensive residential cleaning services', 'cleaning', 20.00, 3.0,
+     ARRAY['cleaning supplies', 'vacuum cleaner', 'mop and bucket', 'cleaning cloths'],
+     ARRAY['cleaning experience', 'attention to detail', 'reliability'],
+     'Bring own supplies, follow customer preferences, clean thoroughly, respect property',
+     'Same-day cancellation fee applies'),
+    
+    ('Lawn Care & Maintenance', 'Lawn mowing, trimming, and garden maintenance', 'maintenance', 22.00, 1.5,
+     ARRAY['lawn mower', 'trimmer', 'leaf blower', 'garden tools'],
+     ARRAY['lawn care experience', 'equipment operation', 'safety awareness'],
+     'Bring own equipment, check weather conditions, clean up after work',
+     'Weather-dependent cancellation policy'),
+    
+    ('Pet Sitting & Walking', 'Pet care services including walking and sitting', 'pet_care', 18.00, 1.0,
+     ARRAY['leash', 'waste bags', 'pet treats', 'water bowl'],
+     ARRAY['pet handling experience', 'patience', 'animal care knowledge'],
+     'Meet pets beforehand, follow feeding schedules, provide exercise and attention',
+     'Flexible cancellation for emergencies'),
+    
+    ('Tech Support', 'Computer and device troubleshooting and setup', 'tech_support', 30.00, 1.5,
+     ARRAY['laptop', 'basic tools', 'software installation media'],
+     ARRAY['technical knowledge', 'problem-solving', 'communication skills'],
+     'Diagnose issues, explain solutions, provide follow-up support',
+     '24-hour cancellation notice required'),
+    
+    ('Tutoring Services', 'Academic tutoring for various subjects', 'tutoring', 25.00, 1.0,
+     ARRAY['teaching materials', 'whiteboard', 'reference books'],
+     ARRAY['subject expertise', 'teaching experience', 'patience'],
+     'Assess student needs, create lesson plans, track progress',
+     '24-hour cancellation notice required'),
+    
+    ('Food Delivery', 'Local food and grocery delivery services', 'delivery', 15.00, 0.5,
+     ARRAY['vehicle', 'thermal bags', 'GPS device'],
+     ARRAY['driving experience', 'time management', 'customer service'],
+     'Maintain food temperature, deliver promptly, handle orders carefully',
+     'Flexible cancellation for weather/vehicle issues'),
+    
+    ('Personal Assistant', 'General assistance and errand running', 'other', 20.00, 2.0,
+     ARRAY['smartphone', 'calendar app', 'transportation'],
+     ARRAY['organization skills', 'communication', 'reliability'],
+     'Coordinate schedules, run errands efficiently, provide updates',
+     'Same-day cancellation fee applies')
+ON CONFLICT (name) DO UPDATE SET
+    description = EXCLUDED.description,
+    category = EXCLUDED.category,
+    base_hourly_rate = EXCLUDED.base_hourly_rate,
+    estimated_duration_hours = EXCLUDED.estimated_duration_hours,
+    required_equipment = EXCLUDED.required_equipment,
+    required_skills = EXCLUDED.required_skills,
+    service_instructions = EXCLUDED.service_instructions,
+    cancellation_policy = EXCLUDED.cancellation_policy;
+
+-- Create worker profiles for existing gig workers
+INSERT INTO worker_profiles (worker_id, bio, hourly_rate, experience_years, verification_status, service_radius_miles, emergency_contact_name, emergency_contact_phone, emergency_contact_relationship) 
+SELECT 
+    p.id,
+    CASE 
+        WHEN p.name = 'Carol Davis' THEN 'Experienced house cleaner with 5+ years in residential cleaning. Specializing in deep cleaning and organization.'
+        WHEN p.name = 'David Miller' THEN 'Professional car detailer with expertise in interior and exterior detailing. Certified in automotive care.'
+        WHEN p.name = 'Eva Garcia' THEN 'Skilled pet sitter and dog walker. Certified in pet first aid and behavior training.'
+        ELSE 'Professional gig worker with diverse experience in customer service.'
+    END,
+    CASE 
+        WHEN p.name = 'Carol Davis' THEN 22.00
+        WHEN p.name = 'David Miller' THEN 28.00
+        WHEN p.name = 'Eva Garcia' THEN 20.00
+        ELSE 18.00
+    END,
+    CASE 
+        WHEN p.name = 'Carol Davis' THEN 5
+        WHEN p.name = 'David Miller' THEN 3
+        WHEN p.name = 'Eva Garcia' THEN 2
+        ELSE 1
+    END,
+    'verified',
+    25.0,
+    'Emergency Contact',
+    '+1-555-9999',
+    'Spouse'
+FROM people p 
+WHERE p.role = 'gig_worker'
+ON CONFLICT (worker_id) DO UPDATE SET
+    bio = EXCLUDED.bio,
+    hourly_rate = EXCLUDED.hourly_rate,
+    experience_years = EXCLUDED.experience_years,
+    verification_status = EXCLUDED.verification_status,
+    service_radius_miles = EXCLUDED.service_radius_miles,
+    emergency_contact_name = EXCLUDED.emergency_contact_name,
+    emergency_contact_phone = EXCLUDED.emergency_contact_phone,
+    emergency_contact_relationship = EXCLUDED.emergency_contact_relationship;
+
+-- Assign services to workers based on their profiles
+INSERT INTO worker_services (worker_id, template_id, custom_hourly_rate, experience_level, special_notes)
+SELECT 
+    wp.worker_id,
+    wt.id,
+    CASE 
+        WHEN wt.name = 'House Cleaning' AND p.name = 'Carol Davis' THEN 22.00
+        WHEN wt.name = 'Car Wash & Detailing' AND p.name = 'David Miller' THEN 28.00
+        WHEN wt.name = 'Pet Sitting & Walking' AND p.name = 'Eva Garcia' THEN 20.00
+        ELSE wt.base_hourly_rate
+    END,
+    CASE 
+        WHEN wp.experience_years >= 5 THEN 'Expert'
+        WHEN wp.experience_years >= 3 THEN 'Advanced'
+        WHEN wp.experience_years >= 1 THEN 'Intermediate'
+        ELSE 'Beginner'
+    END,
+    CASE 
+        WHEN wt.name = 'House Cleaning' AND p.name = 'Carol Davis' THEN 'Specializes in deep cleaning and organization'
+        WHEN wt.name = 'Car Wash & Detailing' AND p.name = 'David Miller' THEN 'Certified in automotive detailing'
+        WHEN wt.name = 'Pet Sitting & Walking' AND p.name = 'Eva Garcia' THEN 'Certified in pet first aid'
+        ELSE NULL
+    END
+FROM worker_profiles wp
+JOIN people p ON p.id = wp.worker_id
+CROSS JOIN worker_templates wt
+WHERE 
+    (wt.name = 'House Cleaning' AND p.name = 'Carol Davis') OR
+    (wt.name = 'Car Wash & Detailing' AND p.name = 'David Miller') OR
+    (wt.name = 'Pet Sitting & Walking' AND p.name = 'Eva Garcia')
+ON CONFLICT (worker_id, template_id) DO UPDATE SET
+    custom_hourly_rate = EXCLUDED.custom_hourly_rate,
+    experience_level = EXCLUDED.experience_level,
+    special_notes = EXCLUDED.special_notes;
+
 -- Create a health check function
 CREATE OR REPLACE FUNCTION health_check() 
 RETURNS TABLE(status TEXT, "timestamp" TIMESTAMP WITH TIME ZONE) AS $$
@@ -374,4 +678,7 @@ BEGIN
     RAISE NOTICE 'Tables created: %', (SELECT count(*) FROM information_schema.tables WHERE table_schema = 'public');
     RAISE NOTICE 'Users in people table: %', (SELECT count(*) FROM people);
     RAISE NOTICE 'Users in customers table: %', (SELECT count(*) FROM customers);
+    RAISE NOTICE 'Worker templates created: %', (SELECT count(*) FROM worker_templates);
+    RAISE NOTICE 'Worker profiles created: %', (SELECT count(*) FROM worker_profiles);
+    RAISE NOTICE 'Worker services assigned: %', (SELECT count(*) FROM worker_services);
 END $$;

@@ -661,6 +661,403 @@ func nullFloat64Ptr(f *float64) interface{} {
 	return *f
 }
 
+// CreateGigWorker handles gig worker creation
+func CreateGigWorker(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var gigWorker model.GigWorker
+	err := json.NewDecoder(r.Body).Decode(&gigWorker)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if err := validateGigWorkerRequest(&gigWorker); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Set defaults
+	gigWorker.Role = "gig_worker"
+	if gigWorker.VerificationStatus == "" {
+		gigWorker.VerificationStatus = "pending"
+	}
+
+	// Insert into gigworkers table
+	query := `
+		INSERT INTO gigworkers (
+			name, email, phone, address, latitude, longitude, place_id, 
+			role, is_active, email_verified, phone_verified, bio, hourly_rate, 
+			experience_years, verification_status, background_check_date, 
+			service_radius_miles, availability_notes, emergency_contact_name, 
+			emergency_contact_phone, emergency_contact_relationship, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23
+		) RETURNING id, uuid, created_at, updated_at`
+
+	var id int
+	var uuid string
+	var createdAt, updatedAt time.Time
+	now := time.Now()
+
+	err = config.DB.QueryRow(
+		query,
+		gigWorker.Name,
+		gigWorker.Email,
+		nullString(gigWorker.Phone),
+		gigWorker.Address,
+		nullFloat64(gigWorker.Latitude),
+		nullFloat64(gigWorker.Longitude),
+		nullString(gigWorker.PlaceID),
+		gigWorker.Role,
+		gigWorker.IsActive,
+		gigWorker.EmailVerified,
+		gigWorker.PhoneVerified,
+		nullString(gigWorker.Bio),
+		nullFloat64Ptr(gigWorker.HourlyRate),
+		nullIntPtr(gigWorker.ExperienceYears),
+		gigWorker.VerificationStatus,
+		nullTimePtr(gigWorker.BackgroundCheckDate),
+		nullFloat64Ptr(gigWorker.ServiceRadiusMiles),
+		nullString(gigWorker.AvailabilityNotes),
+		nullString(gigWorker.EmergencyContactName),
+		nullString(gigWorker.EmergencyContactPhone),
+		nullString(gigWorker.EmergencyContactRelationship),
+		now,
+		now,
+	).Scan(&id, &uuid, &createdAt, &updatedAt)
+
+	if err != nil {
+		log.Printf("Database error creating gig worker: %v", err)
+		http.Error(w, "Failed to create gig worker", http.StatusInternalServerError)
+		return
+	}
+
+	// Set response fields
+	gigWorker.ID = id
+	gigWorker.Uuid = uuid
+	gigWorker.CreatedAt = createdAt
+	gigWorker.UpdatedAt = updatedAt
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(gigWorker)
+}
+
+// validateGigWorkerRequest validates the gig worker creation request
+func validateGigWorkerRequest(gw *model.GigWorker) error {
+	if gw.Name == "" {
+		return fmt.Errorf("name is required")
+	}
+	if len(gw.Name) < 2 || len(gw.Name) > 255 {
+		return fmt.Errorf("name must be between 2 and 255 characters")
+	}
+
+	if gw.Email == "" {
+		return fmt.Errorf("email is required")
+	}
+	if len(gw.Email) > 255 {
+		return fmt.Errorf("email must be less than 255 characters")
+	}
+
+	if gw.Address == "" {
+		return fmt.Errorf("address is required")
+	}
+
+	if gw.HourlyRate != nil && *gw.HourlyRate <= 0 {
+		return fmt.Errorf("hourly rate must be greater than 0")
+	}
+
+	if gw.ExperienceYears != nil && (*gw.ExperienceYears < 0 || *gw.ExperienceYears > 50) {
+		return fmt.Errorf("experience years must be between 0 and 50")
+	}
+
+	if gw.ServiceRadiusMiles != nil && (*gw.ServiceRadiusMiles < 1 || *gw.ServiceRadiusMiles > 100) {
+		return fmt.Errorf("service radius must be between 1 and 100 miles")
+	}
+
+	return nil
+}
+
+// GetGigWorkers handles retrieving all gig workers with optional filtering
+func GetGigWorkers(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse query parameters
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	verificationStatus := r.URL.Query().Get("verification_status")
+	isActive := r.URL.Query().Get("is_active")
+
+	// Build dynamic query
+	baseQuery := `
+		SELECT id, uuid, name, email, phone, address, latitude, longitude, place_id,
+			   role, is_active, email_verified, phone_verified, bio, hourly_rate,
+			   experience_years, verification_status, background_check_date,
+			   service_radius_miles, availability_notes, emergency_contact_name,
+			   emergency_contact_phone, emergency_contact_relationship, created_at, updated_at
+		FROM gigworkers
+	`
+
+	countQuery := "SELECT COUNT(*) FROM gigworkers"
+
+	var whereClauses []string
+	var args []interface{}
+	argIndex := 1
+
+	// Add filters
+	if verificationStatus != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("verification_status = $%d", argIndex))
+		args = append(args, verificationStatus)
+		argIndex++
+	}
+
+	if isActive != "" {
+		if isActive == "true" {
+			whereClauses = append(whereClauses, fmt.Sprintf("is_active = $%d", argIndex))
+			args = append(args, true)
+		} else if isActive == "false" {
+			whereClauses = append(whereClauses, fmt.Sprintf("is_active = $%d", argIndex))
+			args = append(args, false)
+		}
+		argIndex++
+	}
+
+	// Add WHERE clause if we have filters
+	if len(whereClauses) > 0 {
+		whereClause := " WHERE " + strings.Join(whereClauses, " AND ")
+		baseQuery += whereClause
+		countQuery += whereClause
+	}
+
+	// Get total count
+	var total int
+	err := config.DB.QueryRow(countQuery, args...).Scan(&total)
+	if err != nil {
+		log.Printf("Error counting gig workers: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Add pagination
+	offset := (page - 1) * limit
+	baseQuery += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	// Execute query
+	rows, err := config.DB.Query(baseQuery, args...)
+	if err != nil {
+		log.Printf("Error querying gig workers: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var gigWorkers []model.GigWorker
+	for rows.Next() {
+		var gw model.GigWorker
+		var phone, placeID, bio, availabilityNotes sql.NullString
+		var latitude, longitude sql.NullFloat64
+		var hourlyRate, serviceRadiusMiles sql.NullFloat64
+		var experienceYears sql.NullInt32
+		var backgroundCheckDate sql.NullTime
+		var emergencyContactName, emergencyContactPhone, emergencyContactRelationship sql.NullString
+
+		err := rows.Scan(
+			&gw.ID, &gw.Uuid, &gw.Name, &gw.Email, &phone, &gw.Address,
+			&latitude, &longitude, &placeID, &gw.Role, &gw.IsActive,
+			&gw.EmailVerified, &gw.PhoneVerified, &bio, &hourlyRate,
+			&experienceYears, &gw.VerificationStatus, &backgroundCheckDate,
+			&serviceRadiusMiles, &availabilityNotes, &emergencyContactName,
+			&emergencyContactPhone, &emergencyContactRelationship,
+			&gw.CreatedAt, &gw.UpdatedAt,
+		)
+		if err != nil {
+			log.Printf("Error scanning gig worker row: %v", err)
+			continue
+		}
+
+		// Handle nullable fields
+		if phone.Valid {
+			gw.Phone = phone.String
+		}
+		if placeID.Valid {
+			gw.PlaceID = placeID.String
+		}
+		if latitude.Valid {
+			gw.Latitude = latitude.Float64
+		}
+		if longitude.Valid {
+			gw.Longitude = longitude.Float64
+		}
+		if bio.Valid {
+			gw.Bio = bio.String
+		}
+		if hourlyRate.Valid {
+			gw.HourlyRate = &hourlyRate.Float64
+		}
+		if experienceYears.Valid {
+			years := int(experienceYears.Int32)
+			gw.ExperienceYears = &years
+		}
+		if backgroundCheckDate.Valid {
+			gw.BackgroundCheckDate = &backgroundCheckDate.Time
+		}
+		if serviceRadiusMiles.Valid {
+			gw.ServiceRadiusMiles = &serviceRadiusMiles.Float64
+		}
+		if availabilityNotes.Valid {
+			gw.AvailabilityNotes = availabilityNotes.String
+		}
+		if emergencyContactName.Valid {
+			gw.EmergencyContactName = emergencyContactName.String
+		}
+		if emergencyContactPhone.Valid {
+			gw.EmergencyContactPhone = emergencyContactPhone.String
+		}
+		if emergencyContactRelationship.Valid {
+			gw.EmergencyContactRelationship = emergencyContactRelationship.String
+		}
+
+		gigWorkers = append(gigWorkers, gw)
+	}
+
+	// Calculate pagination metadata
+	pages := (total + limit - 1) / limit
+	response := map[string]interface{}{
+		"gigworkers": gigWorkers,
+		"pagination": model.Pagination{
+			Page:    page,
+			Limit:   limit,
+			Total:   total,
+			Pages:   pages,
+			HasNext: page < pages,
+			HasPrev: page > 1,
+		},
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetGigWorkerByID retrieves a specific gig worker by ID
+func GetGigWorkerByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	idParam := chi.URLParam(r, "id")
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Invalid gig worker ID format"})
+		return
+	}
+
+	query := `
+		SELECT id, uuid, name, email, phone, address, latitude, longitude, place_id,
+			   role, is_active, email_verified, phone_verified, bio, hourly_rate,
+			   experience_years, verification_status, background_check_date,
+			   service_radius_miles, availability_notes, emergency_contact_name,
+			   emergency_contact_phone, emergency_contact_relationship, created_at, updated_at
+		FROM gigworkers
+		WHERE id = $1
+	`
+
+	var gw model.GigWorker
+	var phone, placeID, bio, availabilityNotes sql.NullString
+	var latitude, longitude sql.NullFloat64
+	var hourlyRate, serviceRadiusMiles sql.NullFloat64
+	var experienceYears sql.NullInt32
+	var backgroundCheckDate sql.NullTime
+	var emergencyContactName, emergencyContactPhone, emergencyContactRelationship sql.NullString
+
+	err = config.DB.QueryRow(query, id).Scan(
+		&gw.ID, &gw.Uuid, &gw.Name, &gw.Email, &phone, &gw.Address,
+		&latitude, &longitude, &placeID, &gw.Role, &gw.IsActive,
+		&gw.EmailVerified, &gw.PhoneVerified, &bio, &hourlyRate,
+		&experienceYears, &gw.VerificationStatus, &backgroundCheckDate,
+		&serviceRadiusMiles, &availabilityNotes, &emergencyContactName,
+		&emergencyContactPhone, &emergencyContactRelationship,
+		&gw.CreatedAt, &gw.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Gig worker not found"})
+			return
+		}
+		log.Printf("Database error: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
+	// Handle nullable fields
+	if phone.Valid {
+		gw.Phone = phone.String
+	}
+	if placeID.Valid {
+		gw.PlaceID = placeID.String
+	}
+	if latitude.Valid {
+		gw.Latitude = latitude.Float64
+	}
+	if longitude.Valid {
+		gw.Longitude = longitude.Float64
+	}
+	if bio.Valid {
+		gw.Bio = bio.String
+	}
+	if hourlyRate.Valid {
+		gw.HourlyRate = &hourlyRate.Float64
+	}
+	if experienceYears.Valid {
+		years := int(experienceYears.Int32)
+		gw.ExperienceYears = &years
+	}
+	if backgroundCheckDate.Valid {
+		gw.BackgroundCheckDate = &backgroundCheckDate.Time
+	}
+	if serviceRadiusMiles.Valid {
+		gw.ServiceRadiusMiles = &serviceRadiusMiles.Float64
+	}
+	if availabilityNotes.Valid {
+		gw.AvailabilityNotes = availabilityNotes.String
+	}
+	if emergencyContactName.Valid {
+		gw.EmergencyContactName = emergencyContactName.String
+	}
+	if emergencyContactPhone.Valid {
+		gw.EmergencyContactPhone = emergencyContactPhone.String
+	}
+	if emergencyContactRelationship.Valid {
+		gw.EmergencyContactRelationship = emergencyContactRelationship.String
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(gw)
+}
+
+// Helper functions for handling nullable database fields
+func nullIntPtr(i *int) interface{} {
+	if i == nil {
+		return nil
+	}
+	return *i
+}
+
 // validateJobCreateRequest validates the job creation request
 func validateJobCreateRequest(req *model.JobCreateRequest) error {
 	if req.Title == "" {
