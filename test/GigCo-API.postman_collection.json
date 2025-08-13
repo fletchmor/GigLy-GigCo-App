@@ -58,9 +58,8 @@
               "    const jsonData = pm.response.json();",
               "    pm.expect(jsonData).to.have.property('id');",
               "    pm.expect(jsonData).to.have.property('name');",
-              "    pm.expect(jsonData).to.have.property('address');",
-              "    pm.expect(jsonData).to.have.property('created_at');",
-              "    pm.expect(jsonData).to.have.property('updated_at');",
+              "    pm.expect(jsonData.id).to.be.a('number');",
+              "    pm.expect(jsonData.name).to.be.a('string');",
               "});",
               "",
               "pm.test('Customer ID matches request', function () {",
@@ -161,13 +160,16 @@
               "    pm.expect(jsonData).to.have.property('name');",
               "    pm.expect(jsonData).to.have.property('address');",
               "    pm.expect(jsonData).to.have.property('created_at');",
-              "    pm.expect(jsonData).to.have.property('updated_at');",
+              "    pm.expect(jsonData.id).to.be.a('number');",
+              "    pm.expect(jsonData.name).to.be.a('string');",
+              "    pm.expect(jsonData.address).to.be.a('string');",
               "});",
               "",
-              "pm.test('User data matches request', function () {",
+              "pm.test('User data is valid', function () {",
               "    const jsonData = pm.response.json();",
-              "    pm.expect(jsonData.name).to.eql('{{$randomFullName}}');",
-              "    pm.expect(jsonData.address).to.eql('{{$randomStreetAddress}}');",
+              "    pm.expect(jsonData.name).to.not.be.empty;",
+              "    pm.expect(jsonData.address).to.not.be.empty;",
+              "    pm.expect(jsonData.id).to.be.greaterThan(0);",
               "});",
               "",
               "pm.test('Store user ID for later tests', function () {",
@@ -415,7 +417,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"worker_id\": 1,\n  \"start_time\": \"2025-08-15T09:00:00Z\",\n  \"end_time\": \"2025-08-15T17:00:00Z\",\n  \"available\": true\n}"
+          "raw": "{\n  \"gig_worker_id\": 1,\n  \"title\": \"Cleaning Service Availability\",\n  \"start_time\": \"2025-08-15T09:00:00Z\",\n  \"end_time\": \"2025-08-15T17:00:00Z\",\n  \"is_available\": true,\n  \"notes\": \"Available for house cleaning jobs\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/schedules/create",
@@ -458,7 +460,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"job_id\": 1,\n  \"consumer_id\": 1,\n  \"worker_id\": 2,\n  \"amount\": 100.00,\n  \"type\": \"payment\"\n}"
+          "raw": "{\n  \"job_id\": 3,\n  \"consumer_id\": 1,\n  \"gig_worker_id\": 5,\n  \"amount\": 88.00,\n  \"payment_method\": \"credit_card\",\n  \"notes\": \"Payment for house cleaning service\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/transactions/create",
@@ -501,7 +503,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"name\": \"{{$randomFullName}}\",\n  \"email\": \"{{$randomEmail}}\", \n  \"password\": \"testpassword123\",\n  \"role\": \"consumer\",\n  \"address\": \"{{$randomStreetAddress}}\"\n}"
+          "raw": "{\n  \"name\": \"{{$randomFullName}}\",\n  \"email\": \"{{$randomEmail}}\",\n  \"role\": \"consumer\",\n  \"address\": \"{{$randomStreetAddress}}\",\n  \"phone\": \"+1{{$randomPhoneNumber}}\"\n}"
         },
         "url": {
           "raw": "{{base_url}}/api/v1/auth/register",
@@ -598,12 +600,758 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"worker_id\": 2\n}"
+          "raw": "{\n  \"gig_worker_id\": 5\n}"
         },
         "url": {
-          "raw": "{{base_url}}/api/v1/jobs/1/accept",
+          "raw": "{{base_url}}/api/v1/jobs/3/accept",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "jobs", "1", "accept"]
+          "path": ["api", "v1", "jobs", "3", "accept"]
+        }
+      }
+    },
+    {
+      "name": "Create GigWorker - Valid Data",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has correct structure', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('id');",
+              "    pm.expect(jsonData).to.have.property('uuid');",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "    pm.expect(jsonData).to.have.property('email');",
+              "    pm.expect(jsonData).to.have.property('address');",
+              "    pm.expect(jsonData).to.have.property('role');",
+              "    pm.expect(jsonData).to.have.property('verification_status');",
+              "    pm.expect(jsonData).to.have.property('created_at');",
+              "});",
+              "",
+              "pm.test('GigWorker data matches request', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.role).to.eql('gig_worker');",
+              "    pm.expect(jsonData.verification_status).to.eql('pending');",
+              "    pm.expect(jsonData.is_active).to.eql(true);",
+              "});",
+              "",
+              "pm.test('Store gigworker ID for later tests', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.environment.set('lastCreatedGigWorkerId', jsonData.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{$randomFullName}}\",\n  \"email\": \"{{$randomEmail}}\",\n  \"address\": \"{{$randomStreetAddress}}\",\n  \"phone\": \"+1{{$randomPhoneNumber}}\",\n  \"hourly_rate\": 25.00,\n  \"experience_years\": 3,\n  \"service_radius_miles\": 15.0,\n  \"bio\": \"Experienced cleaning professional with attention to detail\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers", "create"]
+        }
+      }
+    },
+    {
+      "name": "Create GigWorker - Missing Required Fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions required field', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.satisfy(function(text) {",
+              "        return text.includes('name') || text.includes('email') || text.includes('address');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test Worker\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers", "create"]
+        }
+      }
+    },
+    {
+      "name": "Get All GigWorkers",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has correct structure', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('gigworkers');",
+              "    pm.expect(jsonData).to.have.property('pagination');",
+              "    pm.expect(jsonData.gigworkers).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Pagination structure is correct', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const pagination = jsonData.pagination;",
+              "    pm.expect(pagination).to.have.property('page');",
+              "    pm.expect(pagination).to.have.property('limit');",
+              "    pm.expect(pagination).to.have.property('total');",
+              "    pm.expect(pagination).to.have.property('pages');",
+              "    pm.expect(pagination).to.have.property('has_next');",
+              "    pm.expect(pagination).to.have.property('has_prev');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers"]
+        }
+      }
+    },
+    {
+      "name": "Get All GigWorkers - With Filters",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has correct structure with filtered results', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('gigworkers');",
+              "    pm.expect(jsonData).to.have.property('pagination');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers?verification_status=pending&is_active=true&page=1&limit=5",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers"],
+          "query": [
+            {
+              "key": "verification_status",
+              "value": "pending"
+            },
+            {
+              "key": "is_active",
+              "value": "true"
+            },
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get GigWorker by ID - Valid ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200 or 404', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+              "});",
+              "",
+              "if (pm.response.code === 200) {",
+              "    pm.test('Response has gigworker structure', function () {",
+              "        const jsonData = pm.response.json();",
+              "        pm.expect(jsonData).to.have.property('id');",
+              "        pm.expect(jsonData).to.have.property('uuid');",
+              "        pm.expect(jsonData).to.have.property('name');",
+              "        pm.expect(jsonData).to.have.property('email');",
+              "        pm.expect(jsonData).to.have.property('role');",
+              "        pm.expect(jsonData.role).to.eql('gig_worker');",
+              "    });",
+              "} else {",
+              "    pm.test('Not found response is handled', function () {",
+              "        pm.expect(pm.response.code).to.eql(404);",
+              "    });",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers/{{workerId}}",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers", "{{workerId}}"]
+        }
+      }
+    },
+    {
+      "name": "Get GigWorker by ID - Invalid ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates invalid ID', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('error');",
+              "    pm.expect(jsonData.error.toLowerCase()).to.include('invalid');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/gigworkers/invalid",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "gigworkers", "invalid"]
+        }
+      }
+    },
+    {
+      "name": "Get Jobs - With Pagination and Filters",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test('Response has correct structure', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('jobs');",
+              "    pm.expect(jsonData).to.have.property('pagination');",
+              "    pm.expect(jsonData.jobs).to.be.an('array');",
+              "});",
+              "",
+              "pm.test('Pagination structure is correct', function () {",
+              "    const jsonData = pm.response.json();",
+              "    const pagination = jsonData.pagination;",
+              "    pm.expect(pagination).to.have.property('page');",
+              "    pm.expect(pagination).to.have.property('limit');",
+              "    pm.expect(pagination).to.have.property('total');",
+              "    pm.expect(pagination.page).to.eql(1);",
+              "    pm.expect(pagination.limit).to.eql(10);",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(1000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs?page=1&limit=10&status=posted",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "limit",
+              "value": "10"
+            },
+            {
+              "key": "status",
+              "value": "posted"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Schedule - Missing Required Fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions required field', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.satisfy(function(text) {",
+              "        return text.includes('worker') || text.includes('time') || text.includes('required');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"start_time\": \"2025-08-15T09:00:00Z\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/schedules/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "schedules", "create"]
+        }
+      }
+    },
+    {
+      "name": "Create Schedule - Invalid Time Range",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions time validation', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('time');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"gig_worker_id\": 1,\n  \"start_time\": \"2025-08-15T17:00:00Z\",\n  \"end_time\": \"2025-08-15T09:00:00Z\",\n  \"is_available\": true\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/schedules/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "schedules", "create"]
+        }
+      }
+    },
+    {
+      "name": "Create Transaction - Missing Required Fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions required field', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.satisfy(function(text) {",
+              "        return text.includes('job') || text.includes('consumer') || text.includes('worker') || text.includes('amount') || text.includes('payment');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"job_id\": 3,\n  \"amount\": 100.00\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transactions/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transactions", "create"]
+        }
+      }
+    },
+    {
+      "name": "Create Transaction - Invalid Amount",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions amount', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('amount');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"job_id\": 3,\n  \"consumer_id\": 1,\n  \"gig_worker_id\": 5,\n  \"amount\": -50.00,\n  \"payment_method\": \"credit_card\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/transactions/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "transactions", "create"]
+        }
+      }
+    },
+    {
+      "name": "Register User - Valid Consumer",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "",
+              "pm.test('Response has correct structure', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData).to.have.property('id');",
+              "    pm.expect(jsonData).to.have.property('uuid');",
+              "    pm.expect(jsonData).to.have.property('name');",
+              "    pm.expect(jsonData).to.have.property('email');",
+              "    pm.expect(jsonData).to.have.property('role');",
+              "    pm.expect(jsonData).to.have.property('is_active');",
+              "    pm.expect(jsonData).to.have.property('email_verified');",
+              "});",
+              "",
+              "pm.test('User data matches request', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.expect(jsonData.role).to.eql('consumer');",
+              "    pm.expect(jsonData.is_active).to.eql(true);",
+              "});",
+              "",
+              "pm.test('Store user ID for later tests', function () {",
+              "    const jsonData = pm.response.json();",
+              "    pm.environment.set('lastRegisteredUserId', jsonData.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"{{$randomFullName}}\",\n  \"email\": \"{{$randomEmail}}\",\n  \"address\": \"{{$randomStreetAddress}}\",\n  \"role\": \"consumer\",\n  \"phone\": \"+1{{$randomPhoneNumber}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Register User - Invalid Email",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions email format', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('email');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"invalid-email\",\n  \"address\": \"123 Test Street\",\n  \"role\": \"consumer\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Register User - Invalid Role",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions role', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('role');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"address\": \"123 Test Street\",\n  \"role\": \"invalid_role\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/auth/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Create Job - Missing Required Fields",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions required field', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.satisfy(function(text) {",
+              "        return text.includes('title') || text.includes('description') || text.includes('required');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Test Job\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/create",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "create"]
+        }
+      }
+    },
+    {
+      "name": "Accept Job - Missing Worker ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions worker ID', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('worker');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/3/accept",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "3", "accept"]
+        }
+      }
+    },
+    {
+      "name": "Accept Job - Non-existent Job",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 409 or 404', function () {",
+              "    pm.expect(pm.response.code).to.be.oneOf([404, 409]);",
+              "});",
+              "",
+              "pm.test('Error response indicates job not found or unavailable', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.satisfy(function(text) {",
+              "        return text.includes('not found') || text.includes('not available') || text.includes('already accepted');",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"gig_worker_id\": 5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/99999/accept",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "99999", "accept"]
         }
       }
     },

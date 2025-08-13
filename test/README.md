@@ -53,6 +53,93 @@ docker compose up -d
   }
   ```
 
+### User Registration
+- **POST** `/api/v1/auth/register`
+- **Purpose**: Register new users with role selection (consumer, gig_worker, admin)
+- **Tests**: Registration success, email validation, role validation, duplicate email handling
+- **Body**:
+  ```json
+  {
+    "name": "Full Name",
+    "email": "user@example.com",
+    "address": "User Address",
+    "role": "consumer",
+    "phone": "+1234567890"
+  }
+  ```
+
+### GigWorker Management
+- **POST** `/api/v1/gigworkers/create`
+- **GET** `/api/v1/gigworkers`
+- **GET** `/api/v1/gigworkers/{id}`
+- **Purpose**: Create and manage gig workers with detailed profiles
+- **Tests**: Creation, validation, pagination, filtering by verification status
+- **Create Body**:
+  ```json
+  {
+    "name": "Worker Name",
+    "email": "worker@example.com",
+    "address": "Worker Address",
+    "phone": "+1234567890",
+    "hourly_rate": 25.00,
+    "experience_years": 3,
+    "service_radius_miles": 15.0,
+    "bio": "Professional description"
+  }
+  ```
+
+### Job Management
+- **POST** `/api/v1/jobs/create`
+- **GET** `/api/v1/jobs`
+- **GET** `/api/v1/jobs/{id}`
+- **POST** `/api/v1/jobs/{id}/accept`
+- **Purpose**: Create, list, view, and accept jobs
+- **Tests**: Job creation, pagination with filters, job acceptance, validation
+- **Create Body**:
+  ```json
+  {
+    "title": "Job Title",
+    "description": "Detailed job description",
+    "category": "cleaning",
+    "location": "Job Location",
+    "pay_rate": 25.00,
+    "estimated_hours": 4,
+    "consumer_id": 1
+  }
+  ```
+
+### Schedule Management
+- **POST** `/api/v1/schedules/create`
+- **Purpose**: Create worker availability schedules
+- **Tests**: Schedule creation, time validation, worker assignment
+- **Body**:
+  ```json
+  {
+    "gig_worker_id": 1,
+    "title": "Availability Window",
+    "start_time": "2025-08-15T09:00:00Z",
+    "end_time": "2025-08-15T17:00:00Z",
+    "is_available": true,
+    "notes": "Available for cleaning jobs"
+  }
+  ```
+
+### Transaction Management
+- **POST** `/api/v1/transactions/create`
+- **Purpose**: Create payment transactions
+- **Tests**: Transaction creation, amount validation, required field validation
+- **Body**:
+  ```json
+  {
+    "job_id": 1,
+    "consumer_id": 1,
+    "gig_worker_id": 2,
+    "amount": 100.00,
+    "payment_method": "credit_card",
+    "notes": "Payment for service"
+  }
+  ```
+
 ### Chained Test
 - **GET** `/api/v1/customers/{lastCreatedUserId}`
 - **Purpose**: Verify newly created user can be retrieved
@@ -121,11 +208,18 @@ The database is seeded with test customers:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `baseUrl` | `http://localhost:8080` | API base URL |
+| `base_url` | `http://localhost:8080` | API base URL |
 | `customerId` | `1` | Default customer for testing |
 | `testCustomerId` | `2` | Alternative customer ID |
-| `lastCreatedUserId` | (dynamic) | Auto-set by create user tests |
+| `workerId` | `2` | Default gig worker ID for testing |
+| `consumerId` | `1` | Default consumer ID for testing |
 | `apiVersion` | `v1` | API version prefix |
+| `lastCreatedUserId` | (dynamic) | Auto-set by create user tests |
+| `lastCreatedGigWorkerId` | (dynamic) | Auto-set by create gigworker tests |
+| `lastRegisteredUserId` | (dynamic) | Auto-set by registration tests |
+| `testJobId` | (dynamic) | Auto-set by create job tests |
+| `testScheduleId` | (dynamic) | Auto-set by create schedule tests |
+| `testTransactionId` | (dynamic) | Auto-set by create transaction tests |
 
 ## Next Steps
 
