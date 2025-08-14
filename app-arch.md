@@ -80,6 +80,10 @@ erDiagram
     PEOPLE ||--o{ JOB_REVIEWS : "writes"
     PEOPLE ||--o{ JOB_REVIEWS : "receives"
     
+    GIGWORKERS ||--o{ JOBS : "accepts as worker"
+    GIGWORKERS ||--o{ TRANSACTIONS : "receives payment"
+    GIGWORKERS ||--o{ SCHEDULES : "has availability"
+    
     JOBS ||--o{ TRANSACTIONS : "generates"
     JOBS ||--o{ JOB_REVIEWS : "has"
     JOBS ||--o{ SCHEDULES : "may book"
@@ -177,6 +181,34 @@ erDiagram
         timestamp created_at
         timestamp updated_at
     }
+
+    GIGWORKERS {
+        int id PK
+        uuid uuid UK
+        string email UK
+        string name
+        string phone
+        text address
+        decimal latitude
+        decimal longitude
+        string place_id
+        string role
+        boolean is_active
+        boolean email_verified
+        boolean phone_verified
+        text bio
+        decimal hourly_rate
+        int experience_years
+        string verification_status
+        date background_check_date
+        decimal service_radius_miles
+        text availability_notes
+        string emergency_contact_name
+        string emergency_contact_phone
+        string emergency_contact_relationship
+        timestamp created_at
+        timestamp updated_at
+    }
 ```
 
 ### Core Entity Types
@@ -191,7 +223,7 @@ The system uses several PostgreSQL ENUM types for data integrity:
 
 ## API Endpoints
 
-Based on the Postman collection, the application exposes the following REST API endpoints:
+The application exposes the following REST API endpoints:
 
 ### Health & Status
 - `GET /health` - Application health check
@@ -201,6 +233,11 @@ Based on the Postman collection, the application exposes the following REST API 
 - `GET /api/v1/customers/{id}` - Get customer by ID
 - `POST /api/v1/users/create` - Create new user
 - `POST /api/v1/auth/register` - Register new user with authentication
+
+### GigWorker Management
+- `GET /api/v1/gigworkers` - List all gig workers (with filtering)
+- `GET /api/v1/gigworkers/{id}` - Get gig worker by ID
+- `POST /api/v1/gigworkers/create` - Create new gig worker
 
 ### Job Management
 - `GET /api/v1/jobs` - List all jobs
@@ -360,3 +397,19 @@ The current architecture supports several scalability patterns:
 3. **Caching Layer**: Can be added between the application and database
 4. **Message Queue**: Can be introduced for asynchronous job processing and notifications
 5. **Microservices**: The monolithic application can be broken down into microservices as needed
+
+## Recent Updates
+
+### GigWorker System Enhancement (Latest)
+- Added dedicated `gigworkers` table with enhanced worker-specific fields
+- Implemented comprehensive GigWorker API endpoints:
+  - Worker creation with validation
+  - Worker listing with filtering and pagination
+  - Individual worker retrieval
+- Enhanced data model with worker-specific attributes:
+  - Bio and experience tracking
+  - Verification status management
+  - Service radius and availability notes
+  - Emergency contact information
+- Updated Postman test collection with GigWorker endpoints
+- Maintained backward compatibility with existing `people` table structure
