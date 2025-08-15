@@ -1,6 +1,6 @@
 -- Simple additional seed data for testing
 
--- Add some sample jobs with proper enum casting
+-- Add some sample jobs with proper enum casting and temporal workflow columns
 INSERT INTO jobs (
     consumer_id, title, description, category, location_address,
     pay_rate_per_hour, estimated_duration_hours, total_pay, status, notes

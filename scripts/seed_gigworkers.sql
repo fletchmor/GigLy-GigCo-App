@@ -19,54 +19,63 @@ INSERT INTO gigworkers (
      41.8781, -87.6298, 'gig_worker', true, true, false, 
      'Experienced handyman and maintenance worker. Certified electrician with plumbing skills.', 
      32.00, 12, 'verified', 30.0, 'Available evenings and weekends',
+     'Maria Rodriguez', '+1-555-1004', 'Wife',
      'Maria Rodriguez', '+1-555-1004', 'Wife'),
      
     ('Sarah Chen', 'sarah.chen@example.com', '+1-555-1005', '789 Pine Road, Austin, TX 78701', 
      30.2672, -97.7431, 'gig_worker', true, false, true, 
      'Pet care specialist and dog trainer. Certified in pet first aid and behavior modification.', 
      22.00, 4, 'pending', 25.0, 'Flexible schedule, specializes in large breeds',
+     'David Chen', '+1-555-1006', 'Brother',
      'David Chen', '+1-555-1006', 'Brother'),
      
     ('James Wilson', 'james.wilson@example.com', '+1-555-1007', '321 Cedar Lane, Denver, CO 80201', 
      39.7392, -104.9903, 'gig_worker', false, true, true, 
      'Freelance tutor and academic support specialist. Masters in Education.', 
      28.00, 8, 'verified', 15.0, 'Currently unavailable due to full-time commitment',
+     'Linda Wilson', '+1-555-1008', 'Mother',
      'Linda Wilson', '+1-555-1008', 'Mother'),
      
     ('Emma Johnson', 'emma.johnson@example.com', '+1-555-1009', '654 Birch Boulevard, Seattle, WA 98101', 
      47.6062, -122.3321, 'gig_worker', true, true, true, 
      'Tech support specialist and computer repair technician. CompTIA A+ certified.', 
      35.00, 6, 'verified', 40.0, 'Available for remote and on-site support',
+     'Robert Johnson', '+1-555-1010', 'Father',
      'Robert Johnson', '+1-555-1010', 'Father'),
      
     ('Carlos Martinez', 'carlos.martinez@example.com', '+1-555-1011', '987 Elm Street, Phoenix, AZ 85001', 
      33.4484, -112.0740, 'gig_worker', true, true, true, 
      'Delivery driver and courier service. Clean driving record with commercial license.', 
      18.00, 3, 'verified', 50.0, 'Available 7 days a week, own vehicle',
+     'Ana Martinez', '+1-555-1012', 'Sister',
      'Ana Martinez', '+1-555-1012', 'Sister'),
      
     ('Jessica Brown', 'jessica.brown@example.com', '+1-555-1013', '147 Willow Way, Portland, OR 97201', 
      45.5152, -122.6784, 'gig_worker', true, false, false, 
      'Personal assistant and errand runner. Excellent organizational skills and time management.', 
      20.00, 2, 'pending', 20.0, 'New to the platform, eager to build reputation',
+     'Mark Brown', '+1-555-1014', 'Spouse',
      'Mark Brown', '+1-555-1014', 'Spouse'),
      
     ('Anthony Davis', 'anthony.davis@example.com', '+1-555-1015', '258 Spruce Street, Miami, FL 33101', 
      25.7617, -80.1918, 'gig_worker', true, true, true, 
      'Landscaping and yard maintenance professional. Licensed pesticide applicator.', 
      26.00, 10, 'verified', 35.0, 'Weather dependent availability',
+     'Patricia Davis', '+1-555-1016', 'Wife',
      'Patricia Davis', '+1-555-1016', 'Wife'),
      
     ('Rachel Kim', 'rachel.kim@example.com', '+1-555-1017', '369 Chestnut Circle, Boston, MA 02101', 
      42.3601, -71.0589, 'gig_worker', true, true, true, 
      'Childcare provider and babysitter. CPR certified with early childhood education background.', 
      25.00, 5, 'verified', 15.0, 'Available for evening and weekend childcare',
+     'Kevin Kim', '+1-555-1018', 'Husband',
      'Kevin Kim', '+1-555-1018', 'Husband'),
      
     ('Tyler Green', 'tyler.green@example.com', '+1-555-1019', '741 Poplar Place, Nashville, TN 37201', 
      36.1627, -86.7816, 'gig_worker', true, true, false, 
      'Event setup and breakdown specialist. Experience with weddings and corporate events.', 
      21.00, 4, 'pending', 25.0, 'Weekend availability preferred',
+     'Ashley Green', '+1-555-1020', 'Partner',
      'Ashley Green', '+1-555-1020', 'Partner')
 
 ON CONFLICT (email) DO UPDATE SET
@@ -140,7 +149,7 @@ CROSS JOIN (VALUES
 ) AS addresses(address)
 CROSS JOIN (VALUES (20.00), (25.00), (18.00), (30.00), (15.00)) AS rates(rate)
 CROSS JOIN (VALUES (3.0), (1.5), (8.0), (2.0), (1.0)) AS durations(duration)
-CROSS JOIN (VALUES ('posted'), ('posted'), ('accepted')) AS statuses(status)
+CROSS JOIN (VALUES ('posted'::job_status), ('posted'::job_status), ('accepted'::job_status)) AS statuses(status)
 CROSS JOIN (VALUES 
     (NOW() + interval '1 day'),
     (NOW() + interval '2 days'),
@@ -155,18 +164,18 @@ WHERE p.role = 'consumer'
 LIMIT 15
 ON CONFLICT DO NOTHING;
 
--- Insert sample schedules for gig workers
+-- Insert sample schedules for gig workers (using people table IDs)
 INSERT INTO schedules (
     gig_worker_id, title, start_time, end_time, is_available, notes
 )
 SELECT 
-    gw.id,
+    p.id,
     'Available for ' || categories.category,
     NOW() + (days.day || ' days')::interval + (hours.hour || ' hours')::interval,
     NOW() + (days.day || ' days')::interval + (hours.hour + 4 || ' hours')::interval,
     availability.available,
     notes.note
-FROM gigworkers gw
+FROM people p
 CROSS JOIN (VALUES ('cleaning'), ('maintenance'), ('delivery')) AS categories(category)
 CROSS JOIN (VALUES (1), (2), (3), (7)) AS days(day)
 CROSS JOIN (VALUES (9), (13), (17)) AS hours(hour)
@@ -176,8 +185,8 @@ CROSS JOIN (VALUES
     ('Prefer morning appointments'),
     ('Emergency availability only')
 ) AS notes(note)
-WHERE gw.is_active = true
-LIMIT 20
+WHERE p.role = 'gig_worker' AND p.is_active = true
+LIMIT 5
 ON CONFLICT DO NOTHING;
 
 -- Create some sample transactions
@@ -188,14 +197,14 @@ INSERT INTO transactions (
 SELECT 
     j.id,
     j.consumer_id,
-    COALESCE(j.gig_worker_id, (SELECT id FROM gigworkers WHERE is_active = true LIMIT 1)),
+    COALESCE(j.gig_worker_id, (SELECT id FROM people WHERE role = 'gig_worker' AND is_active = true LIMIT 1)),
     j.total_pay,
     'USD',
     statuses.status,
     methods.method,
     notes.note
 FROM jobs j
-CROSS JOIN (VALUES ('completed'), ('pending'), ('completed')) AS statuses(status)
+CROSS JOIN (VALUES ('completed'::transaction_status), ('pending'::transaction_status), ('completed'::transaction_status)) AS statuses(status)
 CROSS JOIN (VALUES ('credit_card'), ('bank_transfer'), ('cash')) AS methods(method)
 CROSS JOIN (VALUES 
     ('Payment for completed work'),

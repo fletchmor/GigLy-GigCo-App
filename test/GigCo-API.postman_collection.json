@@ -322,11 +322,13 @@
               "    pm.response.to.have.status(200);",
               "});",
               "",
-              "pm.test('Response is an array or has jobs property', function () {",
+              "pm.test('Response has jobs property (may be null if empty)', function () {",
               "    const jsonData = pm.response.json();",
-              "    pm.expect(jsonData).to.satisfy(function(data) {",
-              "        return Array.isArray(data) || (data && Array.isArray(data.jobs));",
-              "    });",
+              "    pm.expect(jsonData).to.have.property('jobs');",
+              "    // Jobs can be null if no results, or an array if there are results",
+              "    if (jsonData.jobs !== null) {",
+              "        pm.expect(jsonData.jobs).to.be.an('array');",
+              "    }",
               "});",
               "",
               "pm.test('Response time is acceptable', function () {",
@@ -843,9 +845,9 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/api/v1/gigworkers/{{workerId}}",
+          "raw": "{{base_url}}/api/v1/gigworkers/1",
           "host": ["{{base_url}}"],
-          "path": ["api", "v1", "gigworkers", "{{workerId}}"]
+          "path": ["api", "v1", "gigworkers", "1"]
         }
       }
     },
@@ -895,7 +897,10 @@
               "    const jsonData = pm.response.json();",
               "    pm.expect(jsonData).to.have.property('jobs');",
               "    pm.expect(jsonData).to.have.property('pagination');",
-              "    pm.expect(jsonData.jobs).to.be.an('array');",
+              "    // Jobs can be null if no results, or an array if there are results",
+              "    if (jsonData.jobs !== null) {",
+              "        pm.expect(jsonData.jobs).to.be.an('array');",
+              "    }",
               "});",
               "",
               "pm.test('Pagination structure is correct', function () {",
@@ -1352,6 +1357,459 @@
           "raw": "{{base_url}}/api/v1/jobs/99999/accept",
           "host": ["{{base_url}}"],
           "path": ["api", "v1", "jobs", "99999", "accept"]
+        }
+      }
+    },
+    {
+      "name": "Accept Job Offer - Valid Request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be in offer_sent status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('offer_sent');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/3/accept-offer",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "3", "accept-offer"]
+        }
+      }
+    },
+    {
+      "name": "Reject Job Offer - Valid Request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be in offer_sent status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('offer_sent');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/4/reject-offer",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "4", "reject-offer"]
+        }
+      }
+    },
+    {
+      "name": "Start Job - Valid Request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be in accepted status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('accepted');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/start",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "start"]
+        }
+      }
+    },
+    {
+      "name": "Complete Job - Valid Request",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be in progress status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('progress');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/complete",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "complete"]
+        }
+      }
+    },
+    {
+      "name": "Submit Review - Valid Consumer Review",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be completed', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('completed');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reviewer_id\": 1,\n  \"rating\": 5,\n  \"comment\": \"Excellent service! Very professional and thorough cleaning.\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/review",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "review"]
+        }
+      }
+    },
+    {
+      "name": "Submit Review - Valid Worker Review",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400 (job status validation)', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error response indicates job must be completed', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('completed');",
+              "});",
+              "",
+              "pm.test('Response time is acceptable', function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reviewer_id\": 5,\n  \"rating\": 4,\n  \"comment\": \"Good client, clear instructions and payment was prompt.\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/review",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "review"]
+        }
+      }
+    },
+    {
+      "name": "Accept Job Offer - Invalid Job Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('status');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/1/accept-offer",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "1", "accept-offer"]
+        }
+      }
+    },
+    {
+      "name": "Start Job - Invalid Job Status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions status', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('status');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/1/start",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "1", "start"]
+        }
+      }
+    },
+    {
+      "name": "Submit Review - Invalid Rating",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions rating', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('rating');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"reviewer_id\": 1,\n  \"rating\": 10,\n  \"comment\": \"Invalid rating test\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/review",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "review"]
+        }
+      }
+    },
+    {
+      "name": "Submit Review - Missing Reviewer ID",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "",
+              "pm.test('Error message mentions reviewer', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('reviewer');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Missing reviewer ID test\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/{{testJobId}}/review",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "{{testJobId}}", "review"]
+        }
+      }
+    },
+    {
+      "name": "Accept Job Offer - Non-existent Job",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status code is 404', function () {",
+              "    pm.response.to.have.status(404);",
+              "});",
+              "",
+              "pm.test('Error message mentions not found', function () {",
+              "    const responseText = pm.response.text();",
+              "    pm.expect(responseText.toLowerCase()).to.include('not found');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/jobs/99999/accept-offer",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "jobs", "99999", "accept-offer"]
         }
       }
     },

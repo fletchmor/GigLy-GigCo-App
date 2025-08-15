@@ -113,14 +113,18 @@ type JobCreateRequest struct {
 	Description            string     `json:"description"`
 	Category               string     `json:"category,omitempty"`
 	LocationAddress        string     `json:"location_address,omitempty"`
+	Location               string     `json:"location,omitempty"` // Alternative for tests
 	LocationLatitude       *float64   `json:"location_latitude,omitempty"`
 	LocationLongitude      *float64   `json:"location_longitude,omitempty"`
 	EstimatedDurationHours *float64   `json:"estimated_duration_hours,omitempty"`
+	EstimatedHours         *float64   `json:"estimated_hours,omitempty"` // Alternative for tests
 	PayRatePerHour         *float64   `json:"pay_rate_per_hour,omitempty"`
+	PayRate                *float64   `json:"pay_rate,omitempty"` // Alternative for tests
 	TotalPay               *float64   `json:"total_pay,omitempty"`
 	ScheduledStart         *time.Time `json:"scheduled_start,omitempty"`
 	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
 	Notes                  string     `json:"notes,omitempty"`
+	ConsumerID             int        `json:"consumer_id,omitempty"` // For tests
 }
 
 type JobUpdateRequest struct {

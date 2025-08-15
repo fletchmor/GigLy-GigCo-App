@@ -3,6 +3,7 @@ package api
 import (
 	"app/config"
 	"app/internal/model"
+	"app/internal/temporal"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -87,8 +88,8 @@ func GetCustomerByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var customer model.User
-	query := "SELECT id, name FROM customers WHERE id = $1"
-	err = config.DB.QueryRow(query, id).Scan(&customer.ID, &customer.Name)
+	query := "SELECT id, name, COALESCE(address, '') as address FROM customers WHERE id = $1"
+	err = config.DB.QueryRow(query, id).Scan(&customer.ID, &customer.Name, &customer.Address)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -241,6 +242,45 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 		transaction.Status = "pending"
 	}
 
+	// Validate foreign key relationships exist
+	var exists bool
+	
+	// Check if job exists
+	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM jobs WHERE id = $1)", transaction.JobID).Scan(&exists)
+	if err != nil {
+		log.Printf("Error checking job existence: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Job not found", http.StatusBadRequest)
+		return
+	}
+	
+	// Check if consumer exists
+	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM people WHERE id = $1)", transaction.ConsumerID).Scan(&exists)
+	if err != nil {
+		log.Printf("Error checking consumer existence: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Consumer not found", http.StatusBadRequest)
+		return
+	}
+	
+	// Check if gig worker exists
+	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM people WHERE id = $1)", transaction.GigWorkerID).Scan(&exists)
+	if err != nil {
+		log.Printf("Error checking gig worker existence: %v", err)
+		http.Error(w, "Database error", http.StatusInternalServerError)
+		return
+	}
+	if !exists {
+		http.Error(w, "Gig worker not found", http.StatusBadRequest)
+		return
+	}
+
 	// Insert into database
 	query := `
         INSERT INTO transactions (
@@ -267,7 +307,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 		transaction.Notes,
 	).Scan(&id, &uuid, &createdAt, &updatedAt)
 	if err != nil {
-		log.Printf("Database error: %v", err)
+		log.Printf("Database error creating transaction: %v", err)
 		http.Error(w, "Failed to create transaction", http.StatusInternalServerError)
 		return
 	}
@@ -304,8 +344,32 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO: Get consumer_id from JWT token
-	// For now, we'll require it in the request or use a default
-	consumerID := 2 // This should come from authentication
+	// For now, use from request (required for API tests)
+	consumerID := req.ConsumerID
+	if consumerID == 0 {
+		http.Error(w, "Consumer ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Handle alternative field names for backward compatibility
+	locationAddress := req.LocationAddress
+	if locationAddress == "" && req.Location != "" {
+		locationAddress = req.Location
+	}
+	
+	var estimatedHours *float64
+	if req.EstimatedDurationHours != nil {
+		estimatedHours = req.EstimatedDurationHours
+	} else if req.EstimatedHours != nil {
+		estimatedHours = req.EstimatedHours
+	}
+	
+	var payRate *float64
+	if req.PayRatePerHour != nil {
+		payRate = req.PayRatePerHour
+	} else if req.PayRate != nil {
+		payRate = req.PayRate
+	}
 
 	// Insert job into database
 	query := `
@@ -325,11 +389,11 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 		req.Title,
 		req.Description,
 		nullString(req.Category),
-		nullString(req.LocationAddress),
+		nullString(locationAddress),
 		nullFloat64Ptr(req.LocationLatitude),
 		nullFloat64Ptr(req.LocationLongitude),
-		nullFloat64Ptr(req.EstimatedDurationHours),
-		nullFloat64Ptr(req.PayRatePerHour),
+		nullFloat64Ptr(estimatedHours),
+		nullFloat64Ptr(payRate),
 		nullFloat64Ptr(req.TotalPay),
 		nullTimePtr(req.ScheduledStart),
 		nullTimePtr(req.ScheduledEnd),
@@ -342,21 +406,50 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Populate the response with the request data
+	// Populate the response with the processed data
 	job.ConsumerID = consumerID
 	job.Title = req.Title
 	job.Description = req.Description
 	job.Category = req.Category
-	job.LocationAddress = req.LocationAddress
+	job.LocationAddress = locationAddress
 	job.LocationLatitude = req.LocationLatitude
 	job.LocationLongitude = req.LocationLongitude
-	job.EstimatedDurationHours = req.EstimatedDurationHours
-	job.PayRatePerHour = req.PayRatePerHour
+	job.EstimatedDurationHours = estimatedHours
+	job.PayRatePerHour = payRate
 	job.TotalPay = req.TotalPay
 	job.ScheduledStart = req.ScheduledStart
 	job.ScheduledEnd = req.ScheduledEnd
 	job.Notes = req.Notes
 	job.Status = "posted"
+
+	// Start Temporal workflow for the job asynchronously to avoid blocking the response
+	go func() {
+		temporalClient, err := temporal.NewClient()
+		if err != nil {
+			log.Printf("Failed to create Temporal client: %v", err)
+			return
+		}
+		defer temporalClient.Close()
+		
+		we, err := temporalClient.StartJobWorkflow(r.Context(), job.ID, job.ConsumerID)
+		if err != nil {
+			log.Printf("Failed to start job workflow: %v", err)
+			return
+		}
+		
+		// Update job with workflow information
+		updateQuery := `
+			UPDATE jobs 
+			SET temporal_workflow_id = $1, temporal_run_id = $2, updated_at = CURRENT_TIMESTAMP
+			WHERE id = $3
+		`
+		_, err = config.DB.Exec(updateQuery, we.GetID(), we.GetRunID(), job.ID)
+		if err != nil {
+			log.Printf("Failed to update job with workflow IDs: %v", err)
+		} else {
+			log.Printf("Started workflow for job %d: %s", job.ID, we.GetID())
+		}
+	}()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -612,6 +705,32 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if job exists first
+	var existingStatus sql.NullString
+	var existingGigWorkerID sql.NullInt32
+	checkQuery := "SELECT status, gig_worker_id FROM jobs WHERE id = $1"
+	err = config.DB.QueryRow(checkQuery, jobID).Scan(&existingStatus, &existingGigWorkerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Job not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("Database error checking job: %v", err)
+		http.Error(w, "Failed to check job status", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if job is in correct status and available
+	if !existingStatus.Valid || existingStatus.String != "posted" {
+		http.Error(w, "Job is not available for acceptance", http.StatusConflict)
+		return
+	}
+	
+	if existingGigWorkerID.Valid {
+		http.Error(w, "Job has already been accepted by another worker", http.StatusConflict)
+		return
+	}
+
 	// Update job with gig worker and change status
 	query := `
 		UPDATE jobs 
@@ -627,7 +746,7 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 	err = config.DB.QueryRow(query, req.GigWorkerID, jobID).Scan(&id, &uuid, &updatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			http.Error(w, "Job not found, already accepted, or not available", http.StatusConflict)
+			http.Error(w, "Job acceptance failed due to concurrent update", http.StatusConflict)
 			return
 		}
 		log.Printf("Database error accepting job: %v", err)
@@ -683,6 +802,8 @@ func CreateGigWorker(w http.ResponseWriter, r *http.Request) {
 
 	// Set defaults
 	gigWorker.Role = "gig_worker"
+	// Default to active (JSON decoder sets bool to false, so we override)
+	gigWorker.IsActive = true
 	if gigWorker.VerificationStatus == "" {
 		gigWorker.VerificationStatus = "pending"
 	}

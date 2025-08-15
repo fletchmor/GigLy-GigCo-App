@@ -26,4 +26,11 @@ func PostHandlers(r chi.Router) {
 	r.Post("/api/v1/auth/register", api.RegisterUser)
 	r.Post("/api/v1/jobs/create", api.CreateJob)
 	r.Post("/api/v1/jobs/{id}/accept", api.AcceptJob)
+	
+	// Temporal workflow endpoints
+	r.Post("/api/v1/jobs/{id}/accept-offer", api.AcceptJobOffer)
+	r.Post("/api/v1/jobs/{id}/reject-offer", api.RejectJobOffer)
+	r.Post("/api/v1/jobs/{id}/start", api.StartJob)
+	r.Post("/api/v1/jobs/{id}/complete", api.CompleteJob)
+	r.Post("/api/v1/jobs/{id}/review", api.SubmitReview)
 }
