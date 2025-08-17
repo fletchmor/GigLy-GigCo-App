@@ -43,7 +43,7 @@ EXPOSE 8080
 # Set default environment variables
 ENV PORT=8080
 ENV DB_HOST=postgres
-ENV DB_PORT=5433  
+ENV DB_PORT=5433
 ENV DB_NAME=gigco
 ENV DB_USER=postgres
 ENV DB_PASSWORD=password

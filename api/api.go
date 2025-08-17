@@ -388,8 +388,8 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 		consumerID,
 		req.Title,
 		req.Description,
-		nullString(req.Category),
-		nullString(locationAddress),
+		nullStringInterface(req.Category),
+		nullStringInterface(locationAddress),
 		nullFloat64Ptr(req.LocationLatitude),
 		nullFloat64Ptr(req.LocationLongitude),
 		nullFloat64Ptr(estimatedHours),
@@ -397,7 +397,7 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 		nullFloat64Ptr(req.TotalPay),
 		nullTimePtr(req.ScheduledStart),
 		nullTimePtr(req.ScheduledEnd),
-		nullString(req.Notes),
+		nullStringInterface(req.Notes),
 	).Scan(&job.ID, &job.UUID, &job.CreatedAt, &job.UpdatedAt)
 
 	if err != nil {
@@ -721,8 +721,18 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if job is in correct status and available
-	if !existingStatus.Valid || existingStatus.String != "posted" {
-		http.Error(w, "Job is not available for acceptance", http.StatusConflict)
+	if !existingStatus.Valid {
+		http.Error(w, "Job status is invalid", http.StatusInternalServerError)
+		return
+	}
+	
+	// More flexible status checking - allow 'posted' status or jobs without a worker assigned
+	if existingStatus.String != "posted" && existingGigWorkerID.Valid {
+		if existingStatus.String == "accepted" {
+			http.Error(w, "Job has already been accepted by another worker", http.StatusConflict)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Job is not available for acceptance (current status: %s)", existingStatus.String), http.StatusConflict)
 		return
 	}
 	
@@ -731,11 +741,11 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update job with gig worker and change status
+	// Update job with gig worker and change status  
 	query := `
 		UPDATE jobs 
 		SET gig_worker_id = $1, status = 'accepted', updated_at = NOW()
-		WHERE id = $2 AND status = 'posted' AND gig_worker_id IS NULL
+		WHERE id = $2 AND gig_worker_id IS NULL
 		RETURNING id, uuid, updated_at
 	`
 
@@ -779,6 +789,23 @@ func nullFloat64Ptr(f *float64) interface{} {
 	}
 	return *f
 }
+
+// Helper functions for nullable interface{} values
+func nullStringInterface(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
+}
+
+func nullFloat64Interface(f float64) interface{} {
+	if f == 0 {
+		return nil
+	}
+	return f
+}
+
+
 
 // CreateGigWorker handles gig worker creation
 func CreateGigWorker(w http.ResponseWriter, r *http.Request) {
@@ -829,25 +856,25 @@ func CreateGigWorker(w http.ResponseWriter, r *http.Request) {
 		query,
 		gigWorker.Name,
 		gigWorker.Email,
-		nullString(gigWorker.Phone),
+		nullStringInterface(gigWorker.Phone),
 		gigWorker.Address,
-		nullFloat64(gigWorker.Latitude),
-		nullFloat64(gigWorker.Longitude),
-		nullString(gigWorker.PlaceID),
+		nullFloat64Interface(gigWorker.Latitude),
+		nullFloat64Interface(gigWorker.Longitude),
+		nullStringInterface(gigWorker.PlaceID),
 		gigWorker.Role,
 		gigWorker.IsActive,
 		gigWorker.EmailVerified,
 		gigWorker.PhoneVerified,
-		nullString(gigWorker.Bio),
+		nullStringInterface(gigWorker.Bio),
 		nullFloat64Ptr(gigWorker.HourlyRate),
 		nullIntPtr(gigWorker.ExperienceYears),
 		gigWorker.VerificationStatus,
 		nullTimePtr(gigWorker.BackgroundCheckDate),
 		nullFloat64Ptr(gigWorker.ServiceRadiusMiles),
-		nullString(gigWorker.AvailabilityNotes),
-		nullString(gigWorker.EmergencyContactName),
-		nullString(gigWorker.EmergencyContactPhone),
-		nullString(gigWorker.EmergencyContactRelationship),
+		nullStringInterface(gigWorker.AvailabilityNotes),
+		nullStringInterface(gigWorker.EmergencyContactName),
+		nullStringInterface(gigWorker.EmergencyContactPhone),
+		nullStringInterface(gigWorker.EmergencyContactRelationship),
 		now,
 		now,
 	).Scan(&id, &uuid, &createdAt, &updatedAt)

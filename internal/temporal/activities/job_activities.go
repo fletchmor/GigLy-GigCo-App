@@ -37,7 +37,11 @@ func (a *JobActivities) PriceJob(ctx context.Context, jobID int) (workflows.Pric
 	}
 
 	query := `
-		SELECT id, title, description, duration, skills, urgency, location
+		SELECT id, title, description, 
+		       COALESCE(estimated_duration_hours, 1) as duration,
+		       COALESCE(category, '') as skills,
+		       'medium' as urgency,
+		       COALESCE(location_address, '') as location
 		FROM jobs WHERE id = $1
 	`
 	err := a.db.QueryRowContext(ctx, query, jobID).Scan(
@@ -115,7 +119,7 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 	// Get job requirements
 	var jobSkills, jobLocation string
 	err := a.db.QueryRowContext(ctx, 
-		"SELECT skills, location FROM jobs WHERE id = $1", 
+		"SELECT COALESCE(category, '') as skills, COALESCE(location_address, '') as location FROM jobs WHERE id = $1", 
 		jobID).Scan(&jobSkills, &jobLocation)
 	if err != nil {
 		return workflows.MatchWorkerResult{}, fmt.Errorf("failed to get job details: %w", err)
@@ -124,15 +128,15 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 	// Find available workers
 	// This is a simplified matching algorithm
 	query := `
-		SELECT gw.id, gw.name, gw.skills, gw.location, gw.rating
+		SELECT gw.id, gw.name, COALESCE(gw.bio, '') as skills, 
+		       COALESCE(gw.address, '') as location, 5.0 as rating
 		FROM gigworkers gw
-		WHERE gw.is_available = true
-		AND gw.location = $1
-		ORDER BY gw.rating DESC, gw.created_at ASC
+		WHERE gw.is_active = true
+		ORDER BY gw.created_at ASC
 		LIMIT 5
 	`
 
-	rows, err := a.db.QueryContext(ctx, query, jobLocation)
+	rows, err := a.db.QueryContext(ctx, query)
 	if err != nil {
 		return workflows.MatchWorkerResult{}, fmt.Errorf("failed to query workers: %w", err)
 	}
@@ -166,7 +170,7 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 	// Assign worker to job
 	updateQuery := `
 		UPDATE jobs 
-		SET gigworker_id = $1, status = 'worker_assigned', updated_at = CURRENT_TIMESTAMP 
+		SET gig_worker_id = $1, status = 'worker_assigned', updated_at = CURRENT_TIMESTAMP 
 		WHERE id = $2
 	`
 	_, err = a.db.ExecContext(ctx, updateQuery, bestWorkerID, jobID)
@@ -176,7 +180,7 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 
 	// Mark worker as unavailable
 	_, err = a.db.ExecContext(ctx, 
-		"UPDATE gigworkers SET is_available = false WHERE id = $1", 
+		"UPDATE gigworkers SET is_active = false WHERE id = $1", 
 		bestWorkerID)
 	if err != nil {
 		log.Printf("Warning: failed to mark worker as unavailable: %v", err)
@@ -199,10 +203,11 @@ func (a *JobActivities) ScheduleJob(ctx context.Context, jobID, workerID int) er
 	scheduledTime := time.Now().AddDate(0, 0, 1).Truncate(24 * time.Hour).Add(9 * time.Hour)
 
 	query := `
-		INSERT INTO schedules (job_id, gigworker_id, scheduled_start, status, created_at)
-		VALUES ($1, $2, $3, 'scheduled', CURRENT_TIMESTAMP)
+		INSERT INTO schedules (gig_worker_id, title, start_time, end_time, is_available, job_id, created_at)
+		VALUES ($1, $2, $3, $4, false, $5, CURRENT_TIMESTAMP)
 	`
-	_, err := a.db.ExecContext(ctx, query, jobID, workerID, scheduledTime)
+	endTime := scheduledTime.Add(2 * time.Hour) // 2 hour job duration
+	_, err := a.db.ExecContext(ctx, query, workerID, "Scheduled Job", scheduledTime, endTime, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to create schedule: %w", err)
 	}
@@ -236,7 +241,7 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 	}
 
 	query := `
-		SELECT id, consumer_id, gigworker_id, total_pay, status
+		SELECT id, consumer_id, gig_worker_id, total_pay, status
 		FROM jobs WHERE id = $1
 	`
 	err := a.db.QueryRowContext(ctx, query, jobID).Scan(
@@ -254,11 +259,11 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 	transactionID := fmt.Sprintf("txn_%d_%d", jobID, time.Now().Unix())
 	
 	insertQuery := `
-		INSERT INTO transactions (id, job_id, consumer_id, gigworker_id, amount, status, created_at)
-		VALUES ($1, $2, $3, $4, $5, 'completed', CURRENT_TIMESTAMP)
+		INSERT INTO transactions (job_id, consumer_id, gig_worker_id, amount, status, created_at)
+		VALUES ($1, $2, $3, $4, 'completed', CURRENT_TIMESTAMP)
 	`
 	_, err = a.db.ExecContext(ctx, insertQuery, 
-		transactionID, job.ID, job.ConsumerID, job.WorkerID, job.TotalPay)
+		job.ID, job.ConsumerID, job.WorkerID, job.TotalPay)
 	if err != nil {
 		return workflows.ProcessPaymentResult{}, fmt.Errorf("failed to create transaction: %w", err)
 	}
@@ -276,7 +281,7 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 
 	// Mark worker as available again
 	_, err = a.db.ExecContext(ctx, 
-		"UPDATE gigworkers SET is_available = true WHERE id = $1", 
+		"UPDATE gigworkers SET is_active = true WHERE id = $1", 
 		job.WorkerID)
 	if err != nil {
 		log.Printf("Warning: failed to mark worker as available: %v", err)

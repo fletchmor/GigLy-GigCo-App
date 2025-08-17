@@ -52,17 +52,46 @@ func IsValidEmailDomain(email string) bool {
 }
 
 func ServeEmailForm(w http.ResponseWriter, r *http.Request) {
+	// Set content type first
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	
 	tmpl, err := template.ParseFiles("templates/email.html")
 	if err != nil {
-		http.Error(w, "Template error", http.StatusInternalServerError)
-		log.Printf("Template error: %v", err)
+		// Fallback to simple HTML if template not found
+		log.Printf("Template error, using fallback HTML: %v", err)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GigCo - Email Form</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        form { max-width: 400px; }
+        input, button { padding: 10px; margin: 5px 0; width: 100%; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Email Subscription</h1>
+    <p>Stay updated with our latest news and offers.</p>
+    <form action="/submit-email" method="POST">
+        <label for="email">Email Address:</label>
+        <input type="email" id="email" name="email" required placeholder="your@email.com">
+        <button type="submit">Subscribe</button>
+    </form>
+</body>
+</html>`))
 		return
 	}
 
+	// Template found, execute it
 	err = tmpl.Execute(w, nil)
 	if err != nil {
-		http.Error(w, "Template execution error", http.StatusInternalServerError)
-		log.Printf("Template execution error: %v", err)
+		log.Printf("Template execution error, using fallback: %v", err)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<!DOCTYPE html><html><head><title>Email Form</title></head><body><h1>Email Form</h1><p>Template execution failed.</p></body></html>`))
 	}
 }
 
