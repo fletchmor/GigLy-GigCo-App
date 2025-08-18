@@ -2,6 +2,7 @@ package api
 
 import (
 	"app/config"
+	"app/internal/model"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -315,4 +316,267 @@ func cleanPhoneNumber(phone string) string {
 	}
 
 	return cleaned
+}
+
+// LoginUser handles user login
+func LoginUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var loginReq struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&loginReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Validate required fields
+	if loginReq.Email == "" || loginReq.Password == "" {
+		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Implement actual password verification
+	// For now, we'll just check if user exists and is active
+	var user model.User
+	query := `
+		SELECT id, uuid, name, email, role, is_active, email_verified, phone_verified, created_at
+		FROM people WHERE email = $1 AND is_active = true
+	`
+	
+	err = config.DB.QueryRow(query, strings.ToLower(strings.TrimSpace(loginReq.Email))).Scan(
+		&user.ID, &user.Uuid, &user.Name, &user.Email, &user.Role,
+		&user.IsActive, &user.EmailVerified, &user.PhoneVerified, &user.CreatedAt,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+			return
+		}
+		log.Printf("Database error during login: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Verify password hash here
+	// For now, accept any password for testing
+
+	// TODO: Generate JWT token
+	token := "mock-jwt-token-" + user.Uuid
+
+	response := map[string]interface{}{
+		"success": true,
+		"message": "Login successful",
+		"user": map[string]interface{}{
+			"id":             user.ID,
+			"uuid":           user.Uuid,
+			"name":           user.Name,
+			"email":          user.Email,
+			"role":           user.Role,
+			"is_active":      user.IsActive,
+			"email_verified": user.EmailVerified,
+			"phone_verified": user.PhoneVerified,
+		},
+		"token": token,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// LogoutUser handles user logout
+func LogoutUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// TODO: Invalidate JWT token in blacklist/cache
+	// For now, just return success
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Logout successful",
+	})
+}
+
+// RefreshToken refreshes the JWT token
+func RefreshToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var refreshReq struct {
+		Token string `json:"token"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&refreshReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if refreshReq.Token == "" {
+		http.Error(w, "Token is required", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Validate and refresh JWT token
+	// For now, return a new mock token
+	newToken := "refreshed-mock-jwt-token-" + fmt.Sprintf("%d", time.Now().Unix())
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"token":   newToken,
+	})
+}
+
+// VerifyEmail verifies a user's email address
+func VerifyEmail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var verifyReq struct {
+		Token string `json:"token"`
+		Email string `json:"email"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&verifyReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if verifyReq.Token == "" || verifyReq.Email == "" {
+		http.Error(w, "Token and email are required", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Validate verification token
+	// For now, just update the email_verified status
+
+	query := "UPDATE people SET email_verified = true, updated_at = NOW() WHERE email = $1"
+	_, err = config.DB.Exec(query, strings.ToLower(strings.TrimSpace(verifyReq.Email)))
+	if err != nil {
+		log.Printf("Database error verifying email: %v", err)
+		http.Error(w, "Failed to verify email", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Email verified successfully",
+	})
+}
+
+// ForgotPassword initiates password reset process
+func ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var forgotReq struct {
+		Email string `json:"email"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&forgotReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if forgotReq.Email == "" {
+		http.Error(w, "Email is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if user exists
+	var userID int
+	query := "SELECT id FROM people WHERE email = $1 AND is_active = true"
+	err = config.DB.QueryRow(query, strings.ToLower(strings.TrimSpace(forgotReq.Email))).Scan(&userID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Don't reveal if email exists, return success anyway
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"success": true,
+				"message": "If the email exists, a password reset link has been sent",
+			})
+			return
+		}
+		log.Printf("Database error during password reset: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Generate password reset token and send email
+	// For now, just log and return success
+	log.Printf("Password reset requested for user ID: %d", userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "If the email exists, a password reset link has been sent",
+	})
+}
+
+// ResetPassword resets user password with token
+func ResetPassword(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var resetReq struct {
+		Token       string `json:"token"`
+		NewPassword string `json:"new_password"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&resetReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if resetReq.Token == "" || resetReq.NewPassword == "" {
+		http.Error(w, "Token and new password are required", http.StatusBadRequest)
+		return
+	}
+
+	// Validate password strength
+	if len(resetReq.NewPassword) < 8 {
+		http.Error(w, "Password must be at least 8 characters long", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: Validate reset token and update password hash
+	// For now, just return success
+	log.Printf("Password reset completed for token: %s", resetReq.Token)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Password reset successfully",
+	})
 }

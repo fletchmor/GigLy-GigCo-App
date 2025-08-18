@@ -26,6 +26,8 @@ func main() {
 	NewServer.Use(middleware.Logger)
 	handler.GetHandlers(NewServer)
 	handler.PostHandlers(NewServer)
+	handler.PutHandlers(NewServer)
+	handler.DeleteHandlers(NewServer)
 	log.Println("Server starting")
 	log.Fatal(http.ListenAndServe(serverAddress, NewServer))
 }

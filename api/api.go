@@ -1198,6 +1198,757 @@ func GetGigWorkerByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(gw)
 }
 
+// UpdateGigWorker updates a gig worker by ID
+func UpdateGigWorker(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	gigWorkerID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid gig worker ID format", http.StatusBadRequest)
+		return
+	}
+
+	var updateReq struct {
+		Name                           *string    `json:"name,omitempty"`
+		Phone                          *string    `json:"phone,omitempty"`
+		Address                        *string    `json:"address,omitempty"`
+		Latitude                       *float64   `json:"latitude,omitempty"`
+		Longitude                      *float64   `json:"longitude,omitempty"`
+		PlaceID                        *string    `json:"place_id,omitempty"`
+		IsActive                       *bool      `json:"is_active,omitempty"`
+		EmailVerified                  *bool      `json:"email_verified,omitempty"`
+		PhoneVerified                  *bool      `json:"phone_verified,omitempty"`
+		Bio                            *string    `json:"bio,omitempty"`
+		HourlyRate                     *float64   `json:"hourly_rate,omitempty"`
+		ExperienceYears                *int       `json:"experience_years,omitempty"`
+		VerificationStatus             *string    `json:"verification_status,omitempty"`
+		BackgroundCheckDate            *time.Time `json:"background_check_date,omitempty"`
+		ServiceRadiusMiles             *float64   `json:"service_radius_miles,omitempty"`
+		AvailabilityNotes              *string    `json:"availability_notes,omitempty"`
+		EmergencyContactName           *string    `json:"emergency_contact_name,omitempty"`
+		EmergencyContactPhone          *string    `json:"emergency_contact_phone,omitempty"`
+		EmergencyContactRelationship   *string    `json:"emergency_contact_relationship,omitempty"`
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&updateReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Build dynamic update query
+	var setParts []string
+	var args []interface{}
+	argIndex := 1
+
+	if updateReq.Name != nil {
+		setParts = append(setParts, fmt.Sprintf("name = $%d", argIndex))
+		args = append(args, *updateReq.Name)
+		argIndex++
+	}
+	if updateReq.Phone != nil {
+		setParts = append(setParts, fmt.Sprintf("phone = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Phone))
+		argIndex++
+	}
+	if updateReq.Address != nil {
+		setParts = append(setParts, fmt.Sprintf("address = $%d", argIndex))
+		args = append(args, *updateReq.Address)
+		argIndex++
+	}
+	if updateReq.Latitude != nil {
+		setParts = append(setParts, fmt.Sprintf("latitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Latitude))
+		argIndex++
+	}
+	if updateReq.Longitude != nil {
+		setParts = append(setParts, fmt.Sprintf("longitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Longitude))
+		argIndex++
+	}
+	if updateReq.PlaceID != nil {
+		setParts = append(setParts, fmt.Sprintf("place_id = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.PlaceID))
+		argIndex++
+	}
+	if updateReq.IsActive != nil {
+		setParts = append(setParts, fmt.Sprintf("is_active = $%d", argIndex))
+		args = append(args, *updateReq.IsActive)
+		argIndex++
+	}
+	if updateReq.EmailVerified != nil {
+		setParts = append(setParts, fmt.Sprintf("email_verified = $%d", argIndex))
+		args = append(args, *updateReq.EmailVerified)
+		argIndex++
+	}
+	if updateReq.PhoneVerified != nil {
+		setParts = append(setParts, fmt.Sprintf("phone_verified = $%d", argIndex))
+		args = append(args, *updateReq.PhoneVerified)
+		argIndex++
+	}
+	if updateReq.Bio != nil {
+		setParts = append(setParts, fmt.Sprintf("bio = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Bio))
+		argIndex++
+	}
+	if updateReq.HourlyRate != nil {
+		setParts = append(setParts, fmt.Sprintf("hourly_rate = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.HourlyRate))
+		argIndex++
+	}
+	if updateReq.ExperienceYears != nil {
+		setParts = append(setParts, fmt.Sprintf("experience_years = $%d", argIndex))
+		args = append(args, nullIntPtr(updateReq.ExperienceYears))
+		argIndex++
+	}
+	if updateReq.VerificationStatus != nil {
+		setParts = append(setParts, fmt.Sprintf("verification_status = $%d", argIndex))
+		args = append(args, *updateReq.VerificationStatus)
+		argIndex++
+	}
+	if updateReq.BackgroundCheckDate != nil {
+		setParts = append(setParts, fmt.Sprintf("background_check_date = $%d", argIndex))
+		args = append(args, nullTimePtr(updateReq.BackgroundCheckDate))
+		argIndex++
+	}
+	if updateReq.ServiceRadiusMiles != nil {
+		setParts = append(setParts, fmt.Sprintf("service_radius_miles = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.ServiceRadiusMiles))
+		argIndex++
+	}
+	if updateReq.AvailabilityNotes != nil {
+		setParts = append(setParts, fmt.Sprintf("availability_notes = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.AvailabilityNotes))
+		argIndex++
+	}
+	if updateReq.EmergencyContactName != nil {
+		setParts = append(setParts, fmt.Sprintf("emergency_contact_name = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.EmergencyContactName))
+		argIndex++
+	}
+	if updateReq.EmergencyContactPhone != nil {
+		setParts = append(setParts, fmt.Sprintf("emergency_contact_phone = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.EmergencyContactPhone))
+		argIndex++
+	}
+	if updateReq.EmergencyContactRelationship != nil {
+		setParts = append(setParts, fmt.Sprintf("emergency_contact_relationship = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.EmergencyContactRelationship))
+		argIndex++
+	}
+
+	if len(setParts) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
+
+	// Add updated_at and gig_worker_id
+	setParts = append(setParts, fmt.Sprintf("updated_at = $%d", argIndex))
+	args = append(args, time.Now())
+	argIndex++
+
+	// Add WHERE clause
+	args = append(args, gigWorkerID)
+
+	query := fmt.Sprintf("UPDATE gigworkers SET %s WHERE id = $%d", strings.Join(setParts, ", "), argIndex)
+
+	_, err = config.DB.Exec(query, args...)
+	if err != nil {
+		log.Printf("Database error updating gig worker: %v", err)
+		http.Error(w, "Failed to update gig worker", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Gig worker updated successfully",
+	})
+}
+
+// DeactivateGigWorker deactivates a gig worker account
+func DeactivateGigWorker(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	gigWorkerID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid gig worker ID format", http.StatusBadRequest)
+		return
+	}
+
+	query := "UPDATE gigworkers SET is_active = false, updated_at = NOW() WHERE id = $1"
+	_, err = config.DB.Exec(query, gigWorkerID)
+	if err != nil {
+		log.Printf("Database error deactivating gig worker: %v", err)
+		http.Error(w, "Failed to deactivate gig worker", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Gig worker deactivated successfully",
+	})
+}
+
+// UpdateJob updates a job by ID
+func UpdateJob(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	jobID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid job ID format", http.StatusBadRequest)
+		return
+	}
+
+	var updateReq model.JobUpdateRequest
+	err = json.NewDecoder(r.Body).Decode(&updateReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Build dynamic update query
+	var setParts []string
+	var args []interface{}
+	argIndex := 1
+
+	if updateReq.Title != nil {
+		setParts = append(setParts, fmt.Sprintf("title = $%d", argIndex))
+		args = append(args, *updateReq.Title)
+		argIndex++
+	}
+	if updateReq.Description != nil {
+		setParts = append(setParts, fmt.Sprintf("description = $%d", argIndex))
+		args = append(args, *updateReq.Description)
+		argIndex++
+	}
+	if updateReq.Category != nil {
+		setParts = append(setParts, fmt.Sprintf("category = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Category))
+		argIndex++
+	}
+	if updateReq.LocationAddress != nil {
+		setParts = append(setParts, fmt.Sprintf("location_address = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.LocationAddress))
+		argIndex++
+	}
+	if updateReq.LocationLatitude != nil {
+		setParts = append(setParts, fmt.Sprintf("location_latitude = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.LocationLatitude))
+		argIndex++
+	}
+	if updateReq.LocationLongitude != nil {
+		setParts = append(setParts, fmt.Sprintf("location_longitude = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.LocationLongitude))
+		argIndex++
+	}
+	if updateReq.EstimatedDurationHours != nil {
+		setParts = append(setParts, fmt.Sprintf("estimated_duration_hours = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.EstimatedDurationHours))
+		argIndex++
+	}
+	if updateReq.PayRatePerHour != nil {
+		setParts = append(setParts, fmt.Sprintf("pay_rate_per_hour = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.PayRatePerHour))
+		argIndex++
+	}
+	if updateReq.TotalPay != nil {
+		setParts = append(setParts, fmt.Sprintf("total_pay = $%d", argIndex))
+		args = append(args, nullFloat64Ptr(updateReq.TotalPay))
+		argIndex++
+	}
+	if updateReq.ScheduledStart != nil {
+		setParts = append(setParts, fmt.Sprintf("scheduled_start = $%d", argIndex))
+		args = append(args, nullTimePtr(updateReq.ScheduledStart))
+		argIndex++
+	}
+	if updateReq.ScheduledEnd != nil {
+		setParts = append(setParts, fmt.Sprintf("scheduled_end = $%d", argIndex))
+		args = append(args, nullTimePtr(updateReq.ScheduledEnd))
+		argIndex++
+	}
+	if updateReq.Notes != nil {
+		setParts = append(setParts, fmt.Sprintf("notes = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Notes))
+		argIndex++
+	}
+
+	if len(setParts) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
+
+	// Add updated_at and job_id
+	setParts = append(setParts, fmt.Sprintf("updated_at = $%d", argIndex))
+	args = append(args, time.Now())
+	argIndex++
+
+	// Add WHERE clause
+	args = append(args, jobID)
+
+	query := fmt.Sprintf("UPDATE jobs SET %s WHERE id = $%d", strings.Join(setParts, ", "), argIndex)
+
+	_, err = config.DB.Exec(query, args...)
+	if err != nil {
+		log.Printf("Database error updating job: %v", err)
+		http.Error(w, "Failed to update job", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Job updated successfully",
+	})
+}
+
+// CancelJob cancels a job by ID
+func CancelJob(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	jobID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid job ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Check current status before canceling
+	var currentStatus string
+	checkQuery := "SELECT status FROM jobs WHERE id = $1"
+	err = config.DB.QueryRow(checkQuery, jobID).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Job not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("Database error checking job status: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Only allow cancellation of certain statuses
+	if currentStatus == "completed" {
+		http.Error(w, "Cannot cancel a completed job", http.StatusConflict)
+		return
+	}
+	if currentStatus == "cancelled" {
+		http.Error(w, "Job is already cancelled", http.StatusConflict)
+		return
+	}
+
+	query := "UPDATE jobs SET status = 'cancelled', updated_at = NOW() WHERE id = $1"
+	_, err = config.DB.Exec(query, jobID)
+	if err != nil {
+		log.Printf("Database error cancelling job: %v", err)
+		http.Error(w, "Failed to cancel job", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Job cancelled successfully",
+	})
+}
+
+// SendJobOffer sends a job offer to a specific gig worker
+func SendJobOffer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	jobID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid job ID format", http.StatusBadRequest)
+		return
+	}
+
+	var offerReq struct {
+		GigWorkerID int    `json:"gig_worker_id"`
+		Message     string `json:"message,omitempty"`
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&offerReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	if offerReq.GigWorkerID <= 0 {
+		http.Error(w, "Gig worker ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if job exists and is in the right status
+	var currentStatus string
+	checkQuery := "SELECT status FROM jobs WHERE id = $1"
+	err = config.DB.QueryRow(checkQuery, jobID).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Job not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("Database error checking job status: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	if currentStatus != "posted" {
+		http.Error(w, "Job must be in posted status to send offers", http.StatusConflict)
+		return
+	}
+
+	// Update job with gig worker and change status to offer_sent
+	query := `
+		UPDATE jobs 
+		SET gig_worker_id = $1, status = 'offer_sent', updated_at = NOW()
+		WHERE id = $2
+	`
+	_, err = config.DB.Exec(query, offerReq.GigWorkerID, jobID)
+	if err != nil {
+		log.Printf("Database error sending job offer: %v", err)
+		http.Error(w, "Failed to send job offer", http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Send notification to gig worker
+	log.Printf("Job offer sent to gig worker %d for job %d", offerReq.GigWorkerID, jobID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Job offer sent successfully",
+	})
+}
+
+// GetMyJobs retrieves jobs for the current user
+func GetMyJobs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// TODO: Get user ID and role from JWT token
+	// For now, accept user_id and role as query parameters for testing
+	userIDStr := r.URL.Query().Get("user_id")
+	role := r.URL.Query().Get("role")
+	
+	if userIDStr == "" || role == "" {
+		http.Error(w, "User ID and role are required", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Parse pagination parameters
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	status := r.URL.Query().Get("status")
+
+	// Build query based on user role
+	var baseQuery string
+	var countQuery string
+	var args []interface{}
+	argIndex := 1
+
+	if role == "consumer" {
+		baseQuery = `
+			SELECT j.id, j.uuid, j.consumer_id, j.gig_worker_id, j.title, j.description,
+				   j.category, j.location_address, j.location_latitude, j.location_longitude,
+				   j.estimated_duration_hours, j.pay_rate_per_hour, j.total_pay, j.status,
+				   j.scheduled_start, j.scheduled_end, j.actual_start, j.actual_end,
+				   j.notes, j.created_at, j.updated_at,
+				   c.name as consumer_name, c.uuid as consumer_uuid,
+				   w.name as worker_name, w.uuid as worker_uuid
+			FROM jobs j
+			JOIN people c ON j.consumer_id = c.id
+			LEFT JOIN people w ON j.gig_worker_id = w.id
+			WHERE j.consumer_id = $1
+		`
+		countQuery = "SELECT COUNT(*) FROM jobs WHERE consumer_id = $1"
+		args = append(args, userID)
+		argIndex++
+	} else if role == "gig_worker" {
+		baseQuery = `
+			SELECT j.id, j.uuid, j.consumer_id, j.gig_worker_id, j.title, j.description,
+				   j.category, j.location_address, j.location_latitude, j.location_longitude,
+				   j.estimated_duration_hours, j.pay_rate_per_hour, j.total_pay, j.status,
+				   j.scheduled_start, j.scheduled_end, j.actual_start, j.actual_end,
+				   j.notes, j.created_at, j.updated_at,
+				   c.name as consumer_name, c.uuid as consumer_uuid,
+				   w.name as worker_name, w.uuid as worker_uuid
+			FROM jobs j
+			JOIN people c ON j.consumer_id = c.id
+			LEFT JOIN people w ON j.gig_worker_id = w.id
+			WHERE j.gig_worker_id = $1
+		`
+		countQuery = "SELECT COUNT(*) FROM jobs WHERE gig_worker_id = $1"
+		args = append(args, userID)
+		argIndex++
+	} else {
+		http.Error(w, "Invalid role", http.StatusBadRequest)
+		return
+	}
+
+	// Add status filter if provided
+	if status != "" {
+		baseQuery += fmt.Sprintf(" AND j.status = $%d", argIndex)
+		countQuery += fmt.Sprintf(" AND status = $%d", argIndex)
+		args = append(args, status)
+		argIndex++
+	}
+
+	// Get total count
+	var total int
+	err = config.DB.QueryRow(countQuery, args...).Scan(&total)
+	if err != nil {
+		log.Printf("Error counting user jobs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Add pagination
+	offset := (page - 1) * limit
+	baseQuery += fmt.Sprintf(" ORDER BY j.created_at DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	// Execute query
+	rows, err := config.DB.Query(baseQuery, args...)
+	if err != nil {
+		log.Printf("Error querying user jobs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var jobs []model.JobResponse
+	for rows.Next() {
+		var job model.Job
+		var consumerName, consumerUUID string
+		var workerName, workerUUID sql.NullString
+
+		err := rows.Scan(
+			&job.ID, &job.UUID, &job.ConsumerID, &job.GigWorkerID, &job.Title, &job.Description,
+			&job.Category, &job.LocationAddress, &job.LocationLatitude, &job.LocationLongitude,
+			&job.EstimatedDurationHours, &job.PayRatePerHour, &job.TotalPay, &job.Status,
+			&job.ScheduledStart, &job.ScheduledEnd, &job.ActualStart, &job.ActualEnd,
+			&job.Notes, &job.CreatedAt, &job.UpdatedAt,
+			&consumerName, &consumerUUID,
+			&workerName, &workerUUID,
+		)
+		if err != nil {
+			log.Printf("Error scanning job row: %v", err)
+			continue
+		}
+
+		jobResponse := model.JobResponse{
+			Job: job,
+			Consumer: &model.UserSummary{
+				ID:   job.ConsumerID,
+				UUID: consumerUUID,
+				Name: consumerName,
+			},
+		}
+
+		// Add gig worker info if assigned
+		if job.GigWorkerID != nil && workerName.Valid {
+			jobResponse.GigWorker = &model.UserSummary{
+				ID:   *job.GigWorkerID,
+				UUID: workerUUID.String,
+				Name: workerName.String,
+			}
+		}
+
+		jobs = append(jobs, jobResponse)
+	}
+
+	// Calculate pagination metadata
+	pages := (total + limit - 1) / limit
+	response := model.JobsListResponse{
+		Jobs: jobs,
+		Pagination: model.Pagination{
+			Page:    page,
+			Limit:   limit,
+			Total:   total,
+			Pages:   pages,
+			HasNext: page < pages,
+			HasPrev: page > 1,
+		},
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
+// GetAvailableJobs retrieves available jobs for gig workers
+func GetAvailableJobs(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// Parse query parameters
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	category := r.URL.Query().Get("category")
+	maxDistance := r.URL.Query().Get("max_distance")
+	minPayRate := r.URL.Query().Get("min_pay_rate")
+
+	// Base query for available jobs (posted status, no assigned worker)
+	baseQuery := `
+		SELECT j.id, j.uuid, j.consumer_id, j.gig_worker_id, j.title, j.description,
+			   j.category, j.location_address, j.location_latitude, j.location_longitude,
+			   j.estimated_duration_hours, j.pay_rate_per_hour, j.total_pay, j.status,
+			   j.scheduled_start, j.scheduled_end, j.actual_start, j.actual_end,
+			   j.notes, j.created_at, j.updated_at,
+			   c.name as consumer_name, c.uuid as consumer_uuid
+		FROM jobs j
+		JOIN people c ON j.consumer_id = c.id
+		WHERE j.status = 'posted' AND j.gig_worker_id IS NULL
+	`
+
+	countQuery := "SELECT COUNT(*) FROM jobs j WHERE j.status = 'posted' AND j.gig_worker_id IS NULL"
+
+	var whereClauses []string
+	var args []interface{}
+	argIndex := 1
+
+	// Add filters
+	if category != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("j.category = $%d", argIndex))
+		args = append(args, category)
+		argIndex++
+	}
+
+	if minPayRate != "" {
+		if rate, err := strconv.ParseFloat(minPayRate, 64); err == nil {
+			whereClauses = append(whereClauses, fmt.Sprintf("j.pay_rate_per_hour >= $%d", argIndex))
+			args = append(args, rate)
+			argIndex++
+		}
+	}
+
+	// TODO: Add distance filtering based on location
+	if maxDistance != "" {
+		log.Printf("Distance filtering requested: %s km (not yet implemented)", maxDistance)
+	}
+
+	// Add WHERE clauses if we have filters
+	if len(whereClauses) > 0 {
+		whereClause := " AND " + strings.Join(whereClauses, " AND ")
+		baseQuery += whereClause
+		countQuery += whereClause
+	}
+
+	// Get total count
+	var total int
+	err := config.DB.QueryRow(countQuery, args...).Scan(&total)
+	if err != nil {
+		log.Printf("Error counting available jobs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Add pagination
+	offset := (page - 1) * limit
+	baseQuery += fmt.Sprintf(" ORDER BY j.created_at DESC LIMIT $%d OFFSET $%d", argIndex, argIndex+1)
+	args = append(args, limit, offset)
+
+	// Execute query
+	rows, err := config.DB.Query(baseQuery, args...)
+	if err != nil {
+		log.Printf("Error querying available jobs: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var jobs []model.JobResponse
+	for rows.Next() {
+		var job model.Job
+		var consumerName, consumerUUID string
+
+		err := rows.Scan(
+			&job.ID, &job.UUID, &job.ConsumerID, &job.GigWorkerID, &job.Title, &job.Description,
+			&job.Category, &job.LocationAddress, &job.LocationLatitude, &job.LocationLongitude,
+			&job.EstimatedDurationHours, &job.PayRatePerHour, &job.TotalPay, &job.Status,
+			&job.ScheduledStart, &job.ScheduledEnd, &job.ActualStart, &job.ActualEnd,
+			&job.Notes, &job.CreatedAt, &job.UpdatedAt,
+			&consumerName, &consumerUUID,
+		)
+		if err != nil {
+			log.Printf("Error scanning job row: %v", err)
+			continue
+		}
+
+		jobResponse := model.JobResponse{
+			Job: job,
+			Consumer: &model.UserSummary{
+				ID:   job.ConsumerID,
+				UUID: consumerUUID,
+				Name: consumerName,
+			},
+		}
+
+		jobs = append(jobs, jobResponse)
+	}
+
+	// Calculate pagination metadata
+	pages := (total + limit - 1) / limit
+	response := model.JobsListResponse{
+		Jobs: jobs,
+		Pagination: model.Pagination{
+			Page:    page,
+			Limit:   limit,
+			Total:   total,
+			Pages:   pages,
+			HasNext: page < pages,
+			HasPrev: page > 1,
+		},
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(response)
+}
+
 // Helper functions for handling nullable database fields
 func nullIntPtr(i *int) interface{} {
 	if i == nil {
@@ -1242,4 +1993,372 @@ func validateJobCreateRequest(req *model.JobCreateRequest) error {
 	}
 
 	return nil
+}
+
+// GetUserProfile retrieves the current user's profile
+func GetUserProfile(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	// TODO: Get user ID from JWT token
+	// For now, accept user_id as query parameter for testing
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+		return
+	}
+
+	var user model.User
+	query := `
+		SELECT id, uuid, name, email, phone, address, latitude, longitude, place_id,
+			   role, is_active, email_verified, phone_verified, created_at, updated_at
+		FROM people WHERE id = $1
+	`
+	
+	var phone, placeID sql.NullString
+	var latitude, longitude sql.NullFloat64
+	
+	err = config.DB.QueryRow(query, userID).Scan(
+		&user.ID, &user.Uuid, &user.Name, &user.Email, &phone, &user.Address,
+		&latitude, &longitude, &placeID, &user.Role, &user.IsActive,
+		&user.EmailVerified, &user.PhoneVerified, &user.CreatedAt, &user.UpdatedAt,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(model.ErrorResponse{Error: "User not found"})
+			return
+		}
+		log.Printf("Database error: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
+	// Handle nullable fields
+	if phone.Valid {
+		user.Phone = phone.String
+	}
+	if placeID.Valid {
+		user.PlaceID = placeID.String
+	}
+	if latitude.Valid {
+		user.Latitude = latitude.Float64
+	}
+	if longitude.Valid {
+		user.Longitude = longitude.Float64
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
+}
+
+// UpdateUserProfile updates the current user's profile
+func UpdateUserProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// TODO: Get user ID from JWT token
+	// For now, accept user_id as query parameter for testing
+	userIDStr := r.URL.Query().Get("user_id")
+	if userIDStr == "" {
+		http.Error(w, "User ID is required", http.StatusBadRequest)
+		return
+	}
+
+	userID, err := strconv.Atoi(userIDStr)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+		return
+	}
+
+	var updateReq struct {
+		Name      *string  `json:"name,omitempty"`
+		Phone     *string  `json:"phone,omitempty"`
+		Address   *string  `json:"address,omitempty"`
+		Latitude  *float64 `json:"latitude,omitempty"`
+		Longitude *float64 `json:"longitude,omitempty"`
+		PlaceID   *string  `json:"place_id,omitempty"`
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&updateReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Build dynamic update query
+	var setParts []string
+	var args []interface{}
+	argIndex := 1
+
+	if updateReq.Name != nil {
+		setParts = append(setParts, fmt.Sprintf("name = $%d", argIndex))
+		args = append(args, *updateReq.Name)
+		argIndex++
+	}
+	if updateReq.Phone != nil {
+		setParts = append(setParts, fmt.Sprintf("phone = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Phone))
+		argIndex++
+	}
+	if updateReq.Address != nil {
+		setParts = append(setParts, fmt.Sprintf("address = $%d", argIndex))
+		args = append(args, *updateReq.Address)
+		argIndex++
+	}
+	if updateReq.Latitude != nil {
+		setParts = append(setParts, fmt.Sprintf("latitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Latitude))
+		argIndex++
+	}
+	if updateReq.Longitude != nil {
+		setParts = append(setParts, fmt.Sprintf("longitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Longitude))
+		argIndex++
+	}
+	if updateReq.PlaceID != nil {
+		setParts = append(setParts, fmt.Sprintf("place_id = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.PlaceID))
+		argIndex++
+	}
+
+	if len(setParts) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
+
+	// Add updated_at and user_id
+	setParts = append(setParts, fmt.Sprintf("updated_at = $%d", argIndex))
+	args = append(args, time.Now())
+	argIndex++
+
+	// Add WHERE clause
+	args = append(args, userID)
+
+	query := fmt.Sprintf("UPDATE people SET %s WHERE id = $%d", strings.Join(setParts, ", "), argIndex)
+
+	_, err = config.DB.Exec(query, args...)
+	if err != nil {
+		log.Printf("Database error updating user: %v", err)
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User profile updated successfully",
+	})
+}
+
+// GetUserByID retrieves a user by ID (public profile view)
+func GetUserByID(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	idParam := chi.URLParam(r, "id")
+	userID, err := strconv.Atoi(idParam)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Invalid user ID format"})
+		return
+	}
+
+	var user model.User
+	query := `
+		SELECT id, uuid, name, email, address, latitude, longitude, place_id,
+			   role, is_active, created_at, updated_at
+		FROM people WHERE id = $1 AND is_active = true
+	`
+	
+	var latitude, longitude sql.NullFloat64
+	var placeID sql.NullString
+	
+	err = config.DB.QueryRow(query, userID).Scan(
+		&user.ID, &user.Uuid, &user.Name, &user.Email, &user.Address,
+		&latitude, &longitude, &placeID, &user.Role, &user.IsActive,
+		&user.CreatedAt, &user.UpdatedAt,
+	)
+	
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(model.ErrorResponse{Error: "User not found"})
+			return
+		}
+		log.Printf("Database error: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(model.ErrorResponse{Error: "Internal server error"})
+		return
+	}
+
+	// Handle nullable fields
+	if placeID.Valid {
+		user.PlaceID = placeID.String
+	}
+	if latitude.Valid {
+		user.Latitude = latitude.Float64
+	}
+	if longitude.Valid {
+		user.Longitude = longitude.Float64
+	}
+
+	// Don't expose sensitive information in public profile
+	user.Email = ""
+	user.Phone = ""
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(user)
+}
+
+// UpdateUser updates a user by ID (admin function)
+func UpdateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPut {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	userID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+		return
+	}
+
+	var updateReq struct {
+		Name          *string `json:"name,omitempty"`
+		Phone         *string `json:"phone,omitempty"`
+		Address       *string `json:"address,omitempty"`
+		Latitude      *float64 `json:"latitude,omitempty"`
+		Longitude     *float64 `json:"longitude,omitempty"`
+		PlaceID       *string `json:"place_id,omitempty"`
+		IsActive      *bool   `json:"is_active,omitempty"`
+		EmailVerified *bool   `json:"email_verified,omitempty"`
+		PhoneVerified *bool   `json:"phone_verified,omitempty"`
+	}
+
+	err = json.NewDecoder(r.Body).Decode(&updateReq)
+	if err != nil {
+		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+		return
+	}
+
+	// Build dynamic update query
+	var setParts []string
+	var args []interface{}
+	argIndex := 1
+
+	if updateReq.Name != nil {
+		setParts = append(setParts, fmt.Sprintf("name = $%d", argIndex))
+		args = append(args, *updateReq.Name)
+		argIndex++
+	}
+	if updateReq.Phone != nil {
+		setParts = append(setParts, fmt.Sprintf("phone = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.Phone))
+		argIndex++
+	}
+	if updateReq.Address != nil {
+		setParts = append(setParts, fmt.Sprintf("address = $%d", argIndex))
+		args = append(args, *updateReq.Address)
+		argIndex++
+	}
+	if updateReq.Latitude != nil {
+		setParts = append(setParts, fmt.Sprintf("latitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Latitude))
+		argIndex++
+	}
+	if updateReq.Longitude != nil {
+		setParts = append(setParts, fmt.Sprintf("longitude = $%d", argIndex))
+		args = append(args, nullFloat64Interface(*updateReq.Longitude))
+		argIndex++
+	}
+	if updateReq.PlaceID != nil {
+		setParts = append(setParts, fmt.Sprintf("place_id = $%d", argIndex))
+		args = append(args, nullStringInterface(*updateReq.PlaceID))
+		argIndex++
+	}
+	if updateReq.IsActive != nil {
+		setParts = append(setParts, fmt.Sprintf("is_active = $%d", argIndex))
+		args = append(args, *updateReq.IsActive)
+		argIndex++
+	}
+	if updateReq.EmailVerified != nil {
+		setParts = append(setParts, fmt.Sprintf("email_verified = $%d", argIndex))
+		args = append(args, *updateReq.EmailVerified)
+		argIndex++
+	}
+	if updateReq.PhoneVerified != nil {
+		setParts = append(setParts, fmt.Sprintf("phone_verified = $%d", argIndex))
+		args = append(args, *updateReq.PhoneVerified)
+		argIndex++
+	}
+
+	if len(setParts) == 0 {
+		http.Error(w, "No fields to update", http.StatusBadRequest)
+		return
+	}
+
+	// Add updated_at and user_id
+	setParts = append(setParts, fmt.Sprintf("updated_at = $%d", argIndex))
+	args = append(args, time.Now())
+	argIndex++
+
+	// Add WHERE clause
+	args = append(args, userID)
+
+	query := fmt.Sprintf("UPDATE people SET %s WHERE id = $%d", strings.Join(setParts, ", "), argIndex)
+
+	_, err = config.DB.Exec(query, args...)
+	if err != nil {
+		log.Printf("Database error updating user: %v", err)
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User updated successfully",
+	})
+}
+
+// DeactivateUser deactivates a user account
+func DeactivateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	userID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid user ID format", http.StatusBadRequest)
+		return
+	}
+
+	query := "UPDATE people SET is_active = false, updated_at = NOW() WHERE id = $1"
+	_, err = config.DB.Exec(query, userID)
+	if err != nil {
+		log.Printf("Database error deactivating user: %v", err)
+		http.Error(w, "Failed to deactivate user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "User deactivated successfully",
+	})
 }
