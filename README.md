@@ -1,12 +1,24 @@
 # GigCo - Gig Economy Platform
 
-A gig-economy platform where consumers post jobs and gig workers accept them. Built with Go, PostgreSQL, and Docker for local development, with plans for AWS serverless deployment.
+A comprehensive gig-economy platform that connects consumers with gig workers for various services. Built with Go, PostgreSQL, Temporal workflow engine, and Docker for local development.
+
+## 🌟 Key Features
+
+- **User Management**: Consumer, gig worker, and admin role-based system
+- **Job Management**: Complete job posting, acceptance, and completion workflow
+- **Workflow Automation**: Temporal-powered job processing and state management
+- **Payment Processing**: Transaction handling with settlement batching
+- **Scheduling System**: Worker availability and job scheduling
+- **Notification System**: Real-time notifications for job updates
+- **Review System**: Job ratings and feedback
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - Docker and Docker Compose
 - Git
+- Go 1.23+ (for local development)
+- PostgreSQL client (optional, for direct database access)
 
 ### Run the Application
 ```bash
@@ -14,25 +26,49 @@ A gig-economy platform where consumers post jobs and gig workers accept them. Bu
 git clone <repository-url>
 cd app
 
-# Start the application with Docker
+# Start all services with Docker
 docker compose up --build
 
-# Application will be available at http://localhost:8080
+# Services will be available at:
+# - Main API: http://localhost:8080
+# - Temporal UI: http://localhost:8233
+# - Database Admin: http://localhost:8082
+# - PostgreSQL: localhost:5433
 ```
 
 ## 📋 Current Features
 
 ### API Endpoints
+
+#### Core System
 - **Health Check**: `GET /health` - Application and database status
-- **Customer Management**: `GET /api/v1/customers/{id}` - Retrieve customer by ID  
-- **User Creation**: `POST /api/v1/users/create` - Create new users
-- **Email Forms**: Basic email form handling (legacy)
+- **User Registration**: `POST /api/v1/auth/register` - Register users with role selection
+- **Customer Management**: `GET /api/v1/customers/{id}` - Retrieve customer by ID (legacy)
+
+#### GigWorker Management
+- **List Workers**: `GET /api/v1/gigworkers` - List gig workers with filtering
+- **Get Worker**: `GET /api/v1/gigworkers/{id}` - Get specific gig worker details
+- **Create Worker**: `POST /api/v1/gigworkers/create` - Register new gig workers
+
+#### Job Management
+- **List Jobs**: `GET /api/v1/jobs` - List available jobs with filtering
+- **Get Job**: `GET /api/v1/jobs/{id}` - Get specific job details
+- **Create Job**: `POST /api/v1/jobs/create` - Post new jobs
+- **Accept Job**: `POST /api/v1/jobs/{id}/accept` - Accept jobs (triggers workflow)
+
+#### Financial System
+- **Create Transaction**: `POST /api/v1/transactions/create` - Process payments
+
+#### Scheduling
+- **Create Schedule**: `POST /api/v1/schedules/create` - Manage worker availability
 
 ### Infrastructure
-- **Dockerized Development**: Complete Docker Compose setup
-- **PostgreSQL Database**: Version 17 with health checks and data persistence
-- **Database Seeding**: Automatic initialization with sample data
-- **Health Monitoring**: Built-in health check endpoint
+- **Dockerized Development**: Complete Docker Compose setup with 5 services
+- **PostgreSQL Database**: Version 17 with comprehensive schema and health checks
+- **Temporal Workflows**: Automated job processing and state management
+- **Database Administration**: Adminer web interface for database management
+- **Workflow Monitoring**: Temporal UI for workflow visualization
+- **Health Monitoring**: Built-in health check endpoints
 
 ## 🛠️ Development
 
@@ -55,9 +91,11 @@ docker compose up --build
 ### Tech Stack
 - **Language**: Go 1.23.4
 - **Router**: Chi v5
-- **Database**: PostgreSQL 17
+- **Database**: PostgreSQL 17 with comprehensive schema
+- **Workflow Engine**: Temporal v1.35.0
 - **Environment**: Docker & Docker Compose
-- **Testing**: Postman collections with automated tests
+- **Testing**: Postman collections with comprehensive API tests
+- **Database Admin**: Adminer web interface
 
 ### Running Locally
 
@@ -96,16 +134,18 @@ go run ./cmd/main.go
 ### Environment Variables
 ```bash
 # Database Configuration
-DB_HOST=localhost          # postgres for Docker
-DB_PORT=5432
+DB_HOST=postgres           # For Docker, localhost for manual setup
+DB_PORT=5432               # Container port (5433 for host access)
 DB_NAME=gigco
 DB_USER=postgres
-DB_PASSWORD=password
+DB_PASSWORD=bamboo
 DB_SSLMODE=disable
 
 # Server Configuration  
 PORT=8080
-ENV=development
+
+# Temporal Configuration
+TEMPORAL_HOST=temporal:7233
 ```
 
 ## 🧪 Testing
@@ -142,59 +182,100 @@ curl -X POST http://localhost:8080/api/v1/users/create \
 
 ## 📊 Database
 
-### Schema
-- **customers**: User data (id, name, address, timestamps)
-- Sample data automatically seeded on startup
+### Schema Overview
+Comprehensive gig-economy database with 15+ tables:
 
-### Database Management
+#### Core Tables
+- **people**: Users (consumers, gig workers, admins) with roles and verification
+- **jobs**: Job postings with status tracking and location data
+- **gigworkers**: Enhanced worker profiles with skills and availability
+- **transactions**: Payment processing with settlement batching
+- **schedules**: Worker availability and job scheduling
+
+#### Supporting Tables
+- **notifications**: In-app notification system
+- **job_reviews**: Rating and review system
+- **payment_providers**: Multi-provider payment support
+- **worker_profiles**: Extended worker information
+- **worker_templates**: Service category templates
+- **worker_services**: Worker-to-service mappings
+
+### Database Access Options
+
+#### Web Interface (Recommended)
 ```bash
-# Connect to database
-docker compose exec postgres psql -U postgres -d gigco
-
-# View tables
-\dt
-
-# Query sample data
-SELECT * FROM customers;
+# Access Adminer at http://localhost:8082
+# Server: postgres
+# Username: postgres
+# Password: bamboo
+# Database: gigco
 ```
 
-## 🗺️ Roadmap
+#### Command Line
+```bash
+# Connect via Docker
+docker compose exec postgres psql -U postgres -d gigco
 
-### Phase 1: Foundation (Current - ✅ Complete)
-- [x] Docker development environment
-- [x] Basic API endpoints  
-- [x] Database setup and seeding
-- [x] Health monitoring
-- [x] Postman test suite
+# Connect directly (requires postgres client)
+PGPASSWORD=bamboo psql -h localhost -p 5433 -U postgres -d gigco
 
-### Phase 2: Core Business Logic (Next)
-- [x] Enhanced database schema (jobs, transactions, schedules)
-- [ ] User role management (Consumer, Gig Worker, Admin)
-- [ ] Job posting and acceptance workflow
-- [ ] Basic transaction system
+# View all tables
+\dt
 
-### Phase 3: Payment Integration
-- [ ] Payment provider adapter pattern
-- [ ] Clover payment integration
-- [ ] Transaction processing and settlement
+# Sample queries
+SELECT * FROM people WHERE role = 'gig_worker';
+SELECT * FROM jobs ORDER BY created_at DESC LIMIT 5;
+```
 
-### Phase 4: Advanced Features
-- [ ] Worker scheduling system
-- [ ] Notification system
-- [ ] Mobile app preparation
+## 🗺️ Development Status
 
-### Phase 5: AWS Migration
-- [ ] Serverless architecture (Lambda, DynamoDB)
-- [ ] API Gateway integration
-- [ ] EventBridge and Step Functions
+### ✅ Completed Features
+
+#### Foundation & Infrastructure
+- [x] Docker development environment with 5 services
+- [x] Comprehensive PostgreSQL schema (15+ tables)
+- [x] Health monitoring endpoints
+- [x] Database administration interface
+
+#### Core Business Logic
+- [x] User role management (Consumer, Gig Worker, Admin)
+- [x] Complete job posting and acceptance workflow
+- [x] GigWorker management system
+- [x] Transaction tracking system
+- [x] Worker scheduling system
+
+#### Workflow Automation
+- [x] Temporal workflow integration
+- [x] Automated job processing
+- [x] Job state management
+- [x] Workflow monitoring UI
+
+#### API & Testing
+- [x] Comprehensive REST API
+- [x] Postman test collection
+- [x] Input validation and error handling
+- [x] Database seeding and fixtures
+
+### 🚧 In Development
+- [ ] Payment provider integration
+- [ ] Email notification system
+- [ ] Advanced worker matching algorithms
+- [ ] Mobile API optimizations
+
+### 📋 Future Enhancements
+- [ ] Real-time notifications
+- [ ] Advanced reporting dashboard
+- [ ] Mobile app support
+- [ ] Multi-language support
+- [ ] AWS serverless migration
 
 ## 📝 Documentation
 
-- `CLAUDE.md` - Development guidance for AI assistants
+- **[docs/](./docs/)** - Complete technical documentation index\n- `CLAUDE.md` - Development guidance for AI assistants
 - `DOCKER_SETUP.md` - Detailed Docker setup instructions
-- `implementation-plan.md` - Complete development roadmap
-- `requirements.md` - Original project requirements
-- `progress-log.md` - Development progress and decisions
+- **[docs/implementation-plan.md](./docs/implementation-plan.md)** - Complete development roadmap
+- **[docs/requirements.md](./docs/requirements.md)** - Original project requirements
+- **[docs/progress-log.md](./docs/progress-log.md)** - Development progress and decisions
 - `test/README.md` - Postman testing documentation
 
 ## 🤝 Contributing
@@ -213,18 +294,36 @@ SELECT * FROM customers;
 
 ## 🏗️ Architecture
 
-Currently: **Monolithic Go Application**
-- Single binary with embedded HTTP server
-- Direct PostgreSQL connection
-- Docker Compose for local development
+### Current Architecture: **Microservices with Workflow Engine**
 
-Future: **AWS Serverless**
-- Lambda functions with API Gateway
-- DynamoDB for data persistence  
-- EventBridge for event processing
-- Step Functions for workflows
+#### Services
+- **Main API**: Go HTTP server with Chi router
+- **Worker Service**: Temporal workflow worker
+- **PostgreSQL**: Primary data store
+- **Temporal Server**: Workflow orchestration
+- **Temporal UI**: Workflow monitoring interface
+- **Adminer**: Database administration
+
+#### Data Flow
+1. **API Requests** → Main application server
+2. **Job Creation** → Database + Temporal workflow
+3. **Job Acceptance** → Workflow state transition
+4. **Background Processing** → Temporal workers
+5. **Database Updates** → Automatic via workflows
+
+### Service Communication
+- **HTTP REST API**: Client ↔ Main application
+- **Temporal gRPC**: Main application ↔ Workflow engine
+- **PostgreSQL**: All services ↔ Database
+- **Docker Network**: Internal service communication
+
+### Key Benefits
+- **Reliability**: Temporal ensures workflow completion
+- **Scalability**: Independent service scaling
+- **Observability**: Workflow visibility and monitoring
+- **Fault Tolerance**: Automatic retry and error handling
 
 ---
 
-**Status**: Phase 1 Complete - Ready for core business logic development  
-**Last Updated**: July 26, 2025
+**Status**: Core Platform Complete - Production Ready  
+**Last Updated**: August 19, 2025
