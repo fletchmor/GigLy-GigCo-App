@@ -21,31 +21,31 @@ type User struct {
 }
 
 type GigWorker struct {
-	ID                              int       `json:"id"`
-	Uuid                            string    `json:"uuid"`
-	Name                            string    `json:"name"`
-	Email                           string    `json:"email"`
-	Phone                           string    `json:"phone"`
-	Address                         string    `json:"address"`
-	Latitude                        float64   `json:"latitude"`
-	Longitude                       float64   `json:"longitude"`
-	PlaceID                         string    `json:"place_id"`
-	Role                            string    `json:"role"`
-	IsActive                        bool      `json:"is_active"`
-	EmailVerified                   bool      `json:"email_verified"`
-	PhoneVerified                   bool      `json:"phone_verified"`
-	Bio                             string    `json:"bio,omitempty"`
-	HourlyRate                      *float64  `json:"hourly_rate,omitempty"`
-	ExperienceYears                 *int      `json:"experience_years,omitempty"`
-	VerificationStatus              string    `json:"verification_status,omitempty"`
-	BackgroundCheckDate             *time.Time `json:"background_check_date,omitempty"`
-	ServiceRadiusMiles              *float64  `json:"service_radius_miles,omitempty"`
-	AvailabilityNotes               string    `json:"availability_notes,omitempty"`
-	EmergencyContactName            string    `json:"emergency_contact_name,omitempty"`
-	EmergencyContactPhone           string    `json:"emergency_contact_phone,omitempty"`
-	EmergencyContactRelationship    string    `json:"emergency_contact_relationship,omitempty"`
-	CreatedAt                       time.Time `json:"created_at"`
-	UpdatedAt                       time.Time `json:"updated_at"`
+	ID                           int        `json:"id"`
+	Uuid                         string     `json:"uuid"`
+	Name                         string     `json:"name"`
+	Email                        string     `json:"email"`
+	Phone                        string     `json:"phone"`
+	Address                      string     `json:"address"`
+	Latitude                     float64    `json:"latitude"`
+	Longitude                    float64    `json:"longitude"`
+	PlaceID                      string     `json:"place_id"`
+	Role                         string     `json:"role"`
+	IsActive                     bool       `json:"is_active"`
+	EmailVerified                bool       `json:"email_verified"`
+	PhoneVerified                bool       `json:"phone_verified"`
+	Bio                          string     `json:"bio,omitempty"`
+	HourlyRate                   *float64   `json:"hourly_rate,omitempty"`
+	ExperienceYears              *int       `json:"experience_years,omitempty"`
+	VerificationStatus           string     `json:"verification_status,omitempty"`
+	BackgroundCheckDate          *time.Time `json:"background_check_date,omitempty"`
+	ServiceRadiusMiles           *float64   `json:"service_radius_miles,omitempty"`
+	AvailabilityNotes            string     `json:"availability_notes,omitempty"`
+	EmergencyContactName         string     `json:"emergency_contact_name,omitempty"`
+	EmergencyContactPhone        string     `json:"emergency_contact_phone,omitempty"`
+	EmergencyContactRelationship string     `json:"emergency_contact_relationship,omitempty"`
+	CreatedAt                    time.Time  `json:"created_at"`
+	UpdatedAt                    time.Time  `json:"updated_at"`
 }
 
 type Schedule struct {

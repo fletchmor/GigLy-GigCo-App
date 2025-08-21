@@ -70,7 +70,7 @@ func AcceptJobOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update job status", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -142,7 +142,7 @@ func RejectJobOffer(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update job status", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -214,14 +214,14 @@ func StartJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update job status", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-			"success": true,
-			"message": "Job started successfully",
-			"job_id":  jobID,
-		})
+		"success": true,
+		"message": "Job started successfully",
+		"job_id":  jobID,
+	})
 }
 
 // CompleteJob allows a worker to mark a job as completed
@@ -282,7 +282,7 @@ func CompleteJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update job status", http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{

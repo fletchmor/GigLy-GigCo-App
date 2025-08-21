@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"app/internal/auth"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -54,7 +56,7 @@ func IsValidEmailDomain(email string) bool {
 func ServeEmailForm(w http.ResponseWriter, r *http.Request) {
 	// Set content type first
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	
+
 	tmpl, err := template.ParseFiles("templates/email.html")
 	if err != nil {
 		// Fallback to simple HTML if template not found
@@ -138,4 +140,121 @@ func HandleEmailSubmission(w http.ResponseWriter, r *http.Request) {
 		"success": true,
 		"message": "Email registered successfully",
 	})
+}
+
+// JWTAuth middleware validates JWT tokens
+func JWTAuth(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Skip authentication for certain endpoints
+		if shouldSkipAuth(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Get token from Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			http.Error(w, "Missing authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		// Check for Bearer token format
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			http.Error(w, "Invalid authorization header format", http.StatusUnauthorized)
+			return
+		}
+
+		tokenString := parts[1]
+
+		// Validate the token
+		claims, err := auth.ValidateJWT(tokenString)
+		if err != nil {
+			if err == auth.ErrExpiredToken {
+				http.Error(w, "Token has expired", http.StatusUnauthorized)
+				return
+			}
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Add user info to request context
+		ctx := context.WithValue(r.Context(), "user_id", claims.UserID)
+		ctx = context.WithValue(ctx, "user_uuid", claims.UUID)
+		ctx = context.WithValue(ctx, "user_email", claims.Email)
+		ctx = context.WithValue(ctx, "user_role", claims.Role)
+
+		// Call next handler with updated context
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// RequireRole middleware ensures the user has a specific role
+func RequireRole(role string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userRole, ok := r.Context().Value("user_role").(string)
+			if !ok {
+				http.Error(w, "User role not found in context", http.StatusInternalServerError)
+				return
+			}
+
+			if userRole != role {
+				http.Error(w, "Insufficient permissions", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireRoles middleware ensures the user has one of the specified roles
+func RequireRoles(roles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userRole, ok := r.Context().Value("user_role").(string)
+			if !ok {
+				http.Error(w, "User role not found in context", http.StatusInternalServerError)
+				return
+			}
+
+			hasRole := false
+			for _, role := range roles {
+				if userRole == role {
+					hasRole = true
+					break
+				}
+			}
+
+			if !hasRole {
+				http.Error(w, "Insufficient permissions", http.StatusForbidden)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// shouldSkipAuth determines if authentication should be skipped for a given path
+func shouldSkipAuth(path string) bool {
+	skipPaths := []string{
+		"/health",
+		"/api/v1/auth/register",
+		"/api/v1/auth/login",
+		"/api/v1/auth/verify-email",
+		"/api/v1/auth/forgot-password",
+		"/api/v1/auth/reset-password",
+		"/email-form",
+		"/submit-email",
+	}
+
+	for _, skipPath := range skipPaths {
+		if path == skipPath {
+			return true
+		}
+	}
+
+	return false
 }

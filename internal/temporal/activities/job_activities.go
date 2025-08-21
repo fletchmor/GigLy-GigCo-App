@@ -118,8 +118,8 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 
 	// Get job requirements
 	var jobSkills, jobLocation string
-	err := a.db.QueryRowContext(ctx, 
-		"SELECT COALESCE(category, '') as skills, COALESCE(location_address, '') as location FROM jobs WHERE id = $1", 
+	err := a.db.QueryRowContext(ctx,
+		"SELECT COALESCE(category, '') as skills, COALESCE(location_address, '') as location FROM jobs WHERE id = $1",
 		jobID).Scan(&jobSkills, &jobLocation)
 	if err != nil {
 		return workflows.MatchWorkerResult{}, fmt.Errorf("failed to get job details: %w", err)
@@ -179,8 +179,8 @@ func (a *JobActivities) FindMatchingWorker(ctx context.Context, jobID int) (work
 	}
 
 	// Mark worker as unavailable
-	_, err = a.db.ExecContext(ctx, 
-		"UPDATE gigworkers SET is_active = false WHERE id = $1", 
+	_, err = a.db.ExecContext(ctx,
+		"UPDATE gigworkers SET is_active = false WHERE id = $1",
 		bestWorkerID)
 	if err != nil {
 		log.Printf("Warning: failed to mark worker as unavailable: %v", err)
@@ -233,11 +233,11 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 
 	// Get job and payment details
 	var job struct {
-		ID          int
-		ConsumerID  int
-		WorkerID    int
-		TotalPay    float64
-		Status      string
+		ID         int
+		ConsumerID int
+		WorkerID   int
+		TotalPay   float64
+		Status     string
 	}
 
 	query := `
@@ -257,12 +257,12 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 
 	// Create transaction record
 	transactionID := fmt.Sprintf("txn_%d_%d", jobID, time.Now().Unix())
-	
+
 	insertQuery := `
 		INSERT INTO transactions (job_id, consumer_id, gig_worker_id, amount, status, created_at)
 		VALUES ($1, $2, $3, $4, 'completed', CURRENT_TIMESTAMP)
 	`
-	_, err = a.db.ExecContext(ctx, insertQuery, 
+	_, err = a.db.ExecContext(ctx, insertQuery,
 		job.ID, job.ConsumerID, job.WorkerID, job.TotalPay)
 	if err != nil {
 		return workflows.ProcessPaymentResult{}, fmt.Errorf("failed to create transaction: %w", err)
@@ -280,8 +280,8 @@ func (a *JobActivities) ProcessJobPayment(ctx context.Context, jobID int) (workf
 	}
 
 	// Mark worker as available again
-	_, err = a.db.ExecContext(ctx, 
-		"UPDATE gigworkers SET is_active = true WHERE id = $1", 
+	_, err = a.db.ExecContext(ctx,
+		"UPDATE gigworkers SET is_active = true WHERE id = $1",
 		job.WorkerID)
 	if err != nil {
 		log.Printf("Warning: failed to mark worker as available: %v", err)

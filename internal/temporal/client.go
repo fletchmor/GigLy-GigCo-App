@@ -19,7 +19,7 @@ type Client struct {
 // NewClient creates a new Temporal client
 func NewClient() (*Client, error) {
 	temporalHost := getEnv("TEMPORAL_HOST", "localhost:7233")
-	
+
 	c, err := client.Dial(client.Options{
 		HostPort: temporalHost,
 	})
@@ -28,7 +28,7 @@ func NewClient() (*Client, error) {
 	}
 
 	log.Printf("Connected to Temporal server at %s", temporalHost)
-	
+
 	return &Client{Client: c}, nil
 }
 
@@ -128,14 +128,14 @@ func (c *Client) SignalReviewSubmitted(ctx context.Context, workflowID string, r
 func (c *Client) GetWorkflowStatus(ctx context.Context, workflowID string) error {
 	// This is a utility method for debugging workflows
 	workflowRun := c.GetWorkflow(ctx, workflowID, "")
-	
+
 	var result interface{}
 	err := workflowRun.Get(ctx, &result)
 	if err != nil {
 		log.Printf("Workflow %s is still running or failed: %v", workflowID, err)
 		return err
 	}
-	
+
 	log.Printf("Workflow %s completed with result: %v", workflowID, result)
 	return nil
 }

@@ -11,21 +11,21 @@ func GetHandlers(r chi.Router) {
 	r.Get("/health", api.HealthCheck)
 	r.Get("/", middleware.ServeEmailForm)
 	r.Get("/email-submit", middleware.HandleEmailSubmission)
-	
-	// User Management
-	r.Get("/api/v1/customers/{id}", api.GetCustomerByID)
-	r.Get("/api/v1/users/profile", api.GetUserProfile)
-	r.Get("/api/v1/users/{id}", api.GetUserByID)
-	
+
+	// User Management - Protected endpoints
+	r.With(middleware.RequireRoles("admin", "consumer")).Get("/api/v1/customers/{id}", api.GetCustomerByID)
+	r.Get("/api/v1/users/profile", api.GetUserProfile) // Any authenticated user
+	r.With(middleware.RequireRole("admin")).Get("/api/v1/users/{id}", api.GetUserByID)
+
 	// GigWorker Management
-	r.Get("/api/v1/gigworkers", api.GetGigWorkers)
-	r.Get("/api/v1/gigworkers/{id}", api.GetGigWorkerByID)
-	
+	r.With(middleware.RequireRoles("admin", "consumer")).Get("/api/v1/gigworkers", api.GetGigWorkers)
+	r.Get("/api/v1/gigworkers/{id}", api.GetGigWorkerByID) // Any authenticated user
+
 	// Job Management
-	r.Get("/api/v1/jobs", api.GetJobs)
-	r.Get("/api/v1/jobs/{id}", api.GetJobByID)
-	r.Get("/api/v1/jobs/my-jobs", api.GetMyJobs)
-	r.Get("/api/v1/jobs/available", api.GetAvailableJobs)
+	r.Get("/api/v1/jobs", api.GetJobs)           // Any authenticated user
+	r.Get("/api/v1/jobs/{id}", api.GetJobByID)   // Any authenticated user
+	r.Get("/api/v1/jobs/my-jobs", api.GetMyJobs) // Any authenticated user
+	r.With(middleware.RequireRole("gig_worker")).Get("/api/v1/jobs/available", api.GetAvailableJobs)
 }
 
 func PostHandlers(r chi.Router) {
@@ -37,51 +37,51 @@ func PostHandlers(r chi.Router) {
 	r.Post("/api/v1/auth/verify-email", api.VerifyEmail)
 	r.Post("/api/v1/auth/forgot-password", api.ForgotPassword)
 	r.Post("/api/v1/auth/reset-password", api.ResetPassword)
-	
-	// User Management
-	r.Post("/api/v1/users/create", api.CreateUser)
-	
+
+	// User Management - Protected endpoints
+	r.With(middleware.RequireRole("admin")).Post("/api/v1/users/create", api.CreateUser)
+
 	// GigWorker Management
-	r.Post("/api/v1/gigworkers/create", api.CreateGigWorker)
-	
+	r.Post("/api/v1/gigworkers/create", api.CreateGigWorker) // Any authenticated user can register as gig worker
+
 	// Job Management
-	r.Post("/api/v1/jobs/create", api.CreateJob)
-	r.Post("/api/v1/jobs/{id}/accept", api.AcceptJob)
-	r.Post("/api/v1/jobs/{id}/send-offer", api.SendJobOffer)
-	
+	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/create", api.CreateJob)
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/accept", api.AcceptJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/{id}/send-offer", api.SendJobOffer)
+
 	// Job Workflow endpoints
-	r.Post("/api/v1/jobs/{id}/accept-offer", api.AcceptJobOffer)
-	r.Post("/api/v1/jobs/{id}/reject-offer", api.RejectJobOffer)
-	r.Post("/api/v1/jobs/{id}/start", api.StartJob)
-	r.Post("/api/v1/jobs/{id}/complete", api.CompleteJob)
-	r.Post("/api/v1/jobs/{id}/review", api.SubmitReview)
-	
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/accept-offer", api.AcceptJobOffer)
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/reject-offer", api.RejectJobOffer)
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/start", api.StartJob)
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/complete", api.CompleteJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/{id}/review", api.SubmitReview)
+
 	// Schedule Management
-	r.Post("/api/v1/schedules/create", api.CreateSchedule)
-	
+	r.Post("/api/v1/schedules/create", api.CreateSchedule) // Any authenticated user
+
 	// Transaction Management
-	r.Post("/api/v1/transactions/create", api.CreateTransaction)
+	r.With(middleware.RequireRole("admin")).Post("/api/v1/transactions/create", api.CreateTransaction)
 }
 
 func PutHandlers(r chi.Router) {
-	// User Management
-	r.Put("/api/v1/users/profile", api.UpdateUserProfile)
-	r.Put("/api/v1/users/{id}", api.UpdateUser)
-	
+	// User Management - Protected endpoints
+	r.Put("/api/v1/users/profile", api.UpdateUserProfile) // Any authenticated user can update their own profile
+	r.With(middleware.RequireRole("admin")).Put("/api/v1/users/{id}", api.UpdateUser)
+
 	// GigWorker Management
-	r.Put("/api/v1/gigworkers/{id}", api.UpdateGigWorker)
-	
+	r.Put("/api/v1/gigworkers/{id}", api.UpdateGigWorker) // Any authenticated user (should validate ownership in handler)
+
 	// Job Management
-	r.Put("/api/v1/jobs/{id}", api.UpdateJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Put("/api/v1/jobs/{id}", api.UpdateJob)
 }
 
 func DeleteHandlers(r chi.Router) {
-	// User Management
-	r.Delete("/api/v1/users/{id}", api.DeactivateUser)
-	
-	// GigWorker Management
-	r.Delete("/api/v1/gigworkers/{id}", api.DeactivateGigWorker)
-	
+	// User Management - Admin only
+	r.With(middleware.RequireRole("admin")).Delete("/api/v1/users/{id}", api.DeactivateUser)
+
+	// GigWorker Management - Admin only
+	r.With(middleware.RequireRole("admin")).Delete("/api/v1/gigworkers/{id}", api.DeactivateGigWorker)
+
 	// Job Management
-	r.Delete("/api/v1/jobs/{id}", api.CancelJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Delete("/api/v1/jobs/{id}", api.CancelJob)
 }

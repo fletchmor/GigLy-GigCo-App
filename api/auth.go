@@ -2,6 +2,7 @@ package api
 
 import (
 	"app/config"
+	"app/internal/auth"
 	"app/internal/model"
 	"database/sql"
 	"encoding/json"
@@ -174,8 +175,14 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	response.EmailVerified = emailVerified
 	response.PhoneVerified = phoneVerified
 
-	// TODO: Generate JWT token here
-	// response.Token = generateJWTToken(response.ID, response.Role)
+	// Generate JWT token
+	token, err := auth.GenerateJWT(response.ID, response.UUID, response.Email, response.Role)
+	if err != nil {
+		log.Printf("Failed to generate JWT token: %v", err)
+		// Don't fail registration for token generation error
+	} else {
+		response.Token = token
+	}
 
 	// Log successful registration
 	log.Printf("New user registered: ID=%d, Email=%s, Role=%s", response.ID, response.Email, response.Role)
@@ -342,19 +349,19 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Implement actual password verification
+	// NOTE: Password verification will be implemented when password field is added to database
 	// For now, we'll just check if user exists and is active
 	var user model.User
 	query := `
 		SELECT id, uuid, name, email, role, is_active, email_verified, phone_verified, created_at
 		FROM people WHERE email = $1 AND is_active = true
 	`
-	
+
 	err = config.DB.QueryRow(query, strings.ToLower(strings.TrimSpace(loginReq.Email))).Scan(
 		&user.ID, &user.Uuid, &user.Name, &user.Email, &user.Role,
 		&user.IsActive, &user.EmailVerified, &user.PhoneVerified, &user.CreatedAt,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
@@ -365,11 +372,16 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Verify password hash here
+	// NOTE: Password verification will be implemented when password field is added to database
 	// For now, accept any password for testing
 
-	// TODO: Generate JWT token
-	token := "mock-jwt-token-" + user.Uuid
+	// Generate JWT token
+	token, err := auth.GenerateJWT(user.ID, user.Uuid, user.Email, user.Role)
+	if err != nil {
+		log.Printf("Failed to generate JWT token: %v", err)
+		http.Error(w, "Failed to generate authentication token", http.StatusInternalServerError)
+		return
+	}
 
 	response := map[string]interface{}{
 		"success": true,
@@ -399,8 +411,8 @@ func LogoutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Invalidate JWT token in blacklist/cache
-	// For now, just return success
+	// NOTE: JWT token blacklisting would require a cache/database implementation
+	// For stateless JWT, logout is handled client-side by removing the token
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -432,9 +444,13 @@ func RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Validate and refresh JWT token
-	// For now, return a new mock token
-	newToken := "refreshed-mock-jwt-token-" + fmt.Sprintf("%d", time.Now().Unix())
+	// Validate and refresh JWT token
+	newToken, err := auth.RefreshJWT(refreshReq.Token)
+	if err != nil {
+		log.Printf("Failed to refresh token: %v", err)
+		http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

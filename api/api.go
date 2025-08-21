@@ -244,7 +244,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 
 	// Validate foreign key relationships exist
 	var exists bool
-	
+
 	// Check if job exists
 	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM jobs WHERE id = $1)", transaction.JobID).Scan(&exists)
 	if err != nil {
@@ -256,7 +256,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Job not found", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Check if consumer exists
 	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM people WHERE id = $1)", transaction.ConsumerID).Scan(&exists)
 	if err != nil {
@@ -268,7 +268,7 @@ func CreateTransaction(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Consumer not found", http.StatusBadRequest)
 		return
 	}
-	
+
 	// Check if gig worker exists
 	err = config.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM people WHERE id = $1)", transaction.GigWorkerID).Scan(&exists)
 	if err != nil {
@@ -356,14 +356,14 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 	if locationAddress == "" && req.Location != "" {
 		locationAddress = req.Location
 	}
-	
+
 	var estimatedHours *float64
 	if req.EstimatedDurationHours != nil {
 		estimatedHours = req.EstimatedDurationHours
 	} else if req.EstimatedHours != nil {
 		estimatedHours = req.EstimatedHours
 	}
-	
+
 	var payRate *float64
 	if req.PayRatePerHour != nil {
 		payRate = req.PayRatePerHour
@@ -430,13 +430,13 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		defer temporalClient.Close()
-		
+
 		we, err := temporalClient.StartJobWorkflow(r.Context(), job.ID, job.ConsumerID)
 		if err != nil {
 			log.Printf("Failed to start job workflow: %v", err)
 			return
 		}
-		
+
 		// Update job with workflow information
 		updateQuery := `
 			UPDATE jobs 
@@ -725,7 +725,7 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Job status is invalid", http.StatusInternalServerError)
 		return
 	}
-	
+
 	// More flexible status checking - allow 'posted' status or jobs without a worker assigned
 	if existingStatus.String != "posted" && existingGigWorkerID.Valid {
 		if existingStatus.String == "accepted" {
@@ -735,13 +735,13 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Job is not available for acceptance (current status: %s)", existingStatus.String), http.StatusConflict)
 		return
 	}
-	
+
 	if existingGigWorkerID.Valid {
 		http.Error(w, "Job has already been accepted by another worker", http.StatusConflict)
 		return
 	}
 
-	// Update job with gig worker and change status  
+	// Update job with gig worker and change status
 	query := `
 		UPDATE jobs 
 		SET gig_worker_id = $1, status = 'accepted', updated_at = NOW()
@@ -804,8 +804,6 @@ func nullFloat64Interface(f float64) interface{} {
 	}
 	return f
 }
-
-
 
 // CreateGigWorker handles gig worker creation
 func CreateGigWorker(w http.ResponseWriter, r *http.Request) {
@@ -1213,25 +1211,25 @@ func UpdateGigWorker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updateReq struct {
-		Name                           *string    `json:"name,omitempty"`
-		Phone                          *string    `json:"phone,omitempty"`
-		Address                        *string    `json:"address,omitempty"`
-		Latitude                       *float64   `json:"latitude,omitempty"`
-		Longitude                      *float64   `json:"longitude,omitempty"`
-		PlaceID                        *string    `json:"place_id,omitempty"`
-		IsActive                       *bool      `json:"is_active,omitempty"`
-		EmailVerified                  *bool      `json:"email_verified,omitempty"`
-		PhoneVerified                  *bool      `json:"phone_verified,omitempty"`
-		Bio                            *string    `json:"bio,omitempty"`
-		HourlyRate                     *float64   `json:"hourly_rate,omitempty"`
-		ExperienceYears                *int       `json:"experience_years,omitempty"`
-		VerificationStatus             *string    `json:"verification_status,omitempty"`
-		BackgroundCheckDate            *time.Time `json:"background_check_date,omitempty"`
-		ServiceRadiusMiles             *float64   `json:"service_radius_miles,omitempty"`
-		AvailabilityNotes              *string    `json:"availability_notes,omitempty"`
-		EmergencyContactName           *string    `json:"emergency_contact_name,omitempty"`
-		EmergencyContactPhone          *string    `json:"emergency_contact_phone,omitempty"`
-		EmergencyContactRelationship   *string    `json:"emergency_contact_relationship,omitempty"`
+		Name                         *string    `json:"name,omitempty"`
+		Phone                        *string    `json:"phone,omitempty"`
+		Address                      *string    `json:"address,omitempty"`
+		Latitude                     *float64   `json:"latitude,omitempty"`
+		Longitude                    *float64   `json:"longitude,omitempty"`
+		PlaceID                      *string    `json:"place_id,omitempty"`
+		IsActive                     *bool      `json:"is_active,omitempty"`
+		EmailVerified                *bool      `json:"email_verified,omitempty"`
+		PhoneVerified                *bool      `json:"phone_verified,omitempty"`
+		Bio                          *string    `json:"bio,omitempty"`
+		HourlyRate                   *float64   `json:"hourly_rate,omitempty"`
+		ExperienceYears              *int       `json:"experience_years,omitempty"`
+		VerificationStatus           *string    `json:"verification_status,omitempty"`
+		BackgroundCheckDate          *time.Time `json:"background_check_date,omitempty"`
+		ServiceRadiusMiles           *float64   `json:"service_radius_miles,omitempty"`
+		AvailabilityNotes            *string    `json:"availability_notes,omitempty"`
+		EmergencyContactName         *string    `json:"emergency_contact_name,omitempty"`
+		EmergencyContactPhone        *string    `json:"emergency_contact_phone,omitempty"`
+		EmergencyContactRelationship *string    `json:"emergency_contact_relationship,omitempty"`
 	}
 
 	err = json.NewDecoder(r.Body).Decode(&updateReq)
@@ -1653,7 +1651,7 @@ func GetMyJobs(w http.ResponseWriter, r *http.Request) {
 	// For now, accept user_id and role as query parameters for testing
 	userIDStr := r.URL.Query().Get("user_id")
 	role := r.URL.Query().Get("role")
-	
+
 	if userIDStr == "" || role == "" {
 		http.Error(w, "User ID and role are required", http.StatusBadRequest)
 		return
@@ -2019,16 +2017,16 @@ func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 			   role, is_active, email_verified, phone_verified, created_at, updated_at
 		FROM people WHERE id = $1
 	`
-	
+
 	var phone, placeID sql.NullString
 	var latitude, longitude sql.NullFloat64
-	
+
 	err = config.DB.QueryRow(query, userID).Scan(
 		&user.ID, &user.Uuid, &user.Name, &user.Email, &phone, &user.Address,
 		&latitude, &longitude, &placeID, &user.Role, &user.IsActive,
 		&user.EmailVerified, &user.PhoneVerified, &user.CreatedAt, &user.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -2179,16 +2177,16 @@ func GetUserByID(w http.ResponseWriter, r *http.Request) {
 			   role, is_active, created_at, updated_at
 		FROM people WHERE id = $1 AND is_active = true
 	`
-	
+
 	var latitude, longitude sql.NullFloat64
 	var placeID sql.NullString
-	
+
 	err = config.DB.QueryRow(query, userID).Scan(
 		&user.ID, &user.Uuid, &user.Name, &user.Email, &user.Address,
 		&latitude, &longitude, &placeID, &user.Role, &user.IsActive,
 		&user.CreatedAt, &user.UpdatedAt,
 	)
-	
+
 	if err != nil {
 		if err == sql.ErrNoRows {
 			w.WriteHeader(http.StatusNotFound)
@@ -2235,15 +2233,15 @@ func UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var updateReq struct {
-		Name          *string `json:"name,omitempty"`
-		Phone         *string `json:"phone,omitempty"`
-		Address       *string `json:"address,omitempty"`
+		Name          *string  `json:"name,omitempty"`
+		Phone         *string  `json:"phone,omitempty"`
+		Address       *string  `json:"address,omitempty"`
 		Latitude      *float64 `json:"latitude,omitempty"`
 		Longitude     *float64 `json:"longitude,omitempty"`
-		PlaceID       *string `json:"place_id,omitempty"`
-		IsActive      *bool   `json:"is_active,omitempty"`
-		EmailVerified *bool   `json:"email_verified,omitempty"`
-		PhoneVerified *bool   `json:"phone_verified,omitempty"`
+		PlaceID       *string  `json:"place_id,omitempty"`
+		IsActive      *bool    `json:"is_active,omitempty"`
+		EmailVerified *bool    `json:"email_verified,omitempty"`
+		PhoneVerified *bool    `json:"phone_verified,omitempty"`
 	}
 
 	err = json.NewDecoder(r.Body).Decode(&updateReq)

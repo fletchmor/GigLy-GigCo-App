@@ -236,8 +236,8 @@ func PaymentRetryWorkflow(ctx workflow.Context, input JobWorkflowInput) error {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Minute,
 		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 5,
-			InitialInterval: time.Minute,
+			MaximumAttempts:    5,
+			InitialInterval:    time.Minute,
 			BackoffCoefficient: 2.0,
 		},
 	}

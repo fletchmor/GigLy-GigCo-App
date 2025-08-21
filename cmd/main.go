@@ -3,6 +3,7 @@ package main
 import (
 	"app/config"
 	"app/handler"
+	"app/internal/auth"
 	"app/internal/middleware"
 	"fmt"
 	"log"
@@ -20,10 +21,15 @@ func main() {
 		log.Println("No .env file found, using environment variables")
 	}
 	config.ConnectDB()
+
+	// Initialize JWT
+	auth.InitJWT()
+
 	port := os.Getenv("PORT")
 	serverAddress := fmt.Sprintf(":%s", port)
 	NewServer := chi.NewRouter()
 	NewServer.Use(middleware.Logger)
+	NewServer.Use(middleware.JWTAuth)
 	handler.GetHandlers(NewServer)
 	handler.PostHandlers(NewServer)
 	handler.PutHandlers(NewServer)
