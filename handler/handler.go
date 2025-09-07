@@ -50,10 +50,9 @@ func PostHandlers(r chi.Router) {
 	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/{id}/send-offer", api.SendJobOffer)
 
 	// Job Workflow endpoints
-	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/accept-offer", api.AcceptJobOffer)
-	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/reject-offer", api.RejectJobOffer)
 	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/start", api.StartJob)
 	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/complete", api.CompleteJob)
+	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/reject", api.RejectJob)
 	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/{id}/review", api.SubmitReview)
 
 	// Schedule Management

@@ -292,6 +292,91 @@ func CompleteJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// RejectJob allows a gig worker to reject a job offer or accepted job
+func RejectJob(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	jobID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid job ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Parse request body for optional rejection reason
+	var req struct {
+		RejectionReason string `json:"rejection_reason,omitempty"`
+	}
+	json.NewDecoder(r.Body).Decode(&req)
+
+	// Get job information
+	var status string
+	var gigWorkerID sql.NullInt32
+	query := `
+		SELECT COALESCE(status, 'posted') as status, gig_worker_id
+		FROM jobs 
+		WHERE id = $1
+	`
+	err = config.DB.QueryRow(query, jobID).Scan(&status, &gigWorkerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Job not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("Database error getting job: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if job can be rejected
+	if status != "accepted" && status != "offer_sent" {
+		http.Error(w, fmt.Sprintf("Job cannot be rejected in current status: %s", status), http.StatusConflict)
+		return
+	}
+
+	// Update job status back to posted and clear worker assignment
+	var updateQuery string
+	var args []interface{}
+
+	if req.RejectionReason != "" {
+		updateQuery = `
+			UPDATE jobs 
+			SET status = 'posted', gig_worker_id = NULL, 
+				notes = COALESCE(notes || E'\n\n', '') || 'Job rejected: ' || $2, 
+				updated_at = NOW()
+			WHERE id = $1
+		`
+		args = []interface{}{jobID, req.RejectionReason}
+	} else {
+		updateQuery = `
+			UPDATE jobs 
+			SET status = 'posted', gig_worker_id = NULL, 
+				notes = COALESCE(notes || E'\n\n', '') || 'Job rejected by worker', 
+				updated_at = NOW()
+			WHERE id = $1
+		`
+		args = []interface{}{jobID}
+	}
+
+	_, err = config.DB.Exec(updateQuery, args...)
+	if err != nil {
+		log.Printf("Database error updating job status: %v", err)
+		http.Error(w, "Failed to reject job", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Job rejected successfully",
+		"job_id":  jobID,
+	})
+}
+
 // SubmitReview allows users to submit reviews for jobs
 func SubmitReview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
