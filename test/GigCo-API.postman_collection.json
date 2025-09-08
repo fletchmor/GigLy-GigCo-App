@@ -1413,6 +1413,507 @@
       ]
     },
     {
+      "name": "Review System Tests",
+      "item": [
+        {
+          "name": "Create Review - Consumer reviews Gig Worker",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response has review data', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData).to.have.property('review');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "    ",
+                  "    if (jsonData.review) {",
+                  "        pm.expect(jsonData.review).to.have.property('id');",
+                  "        pm.expect(jsonData.review).to.have.property('rating');",
+                  "        pm.expect(jsonData.review).to.have.property('job_id');",
+                  "        pm.environment.set('test_review_id', jsonData.review.id);",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": {{test_job_id}},\n  \"reviewer_id\": {{consumer_id}},\n  \"reviewee_id\": {{gig_worker_id}},\n  \"rating\": 5,\n  \"review_text\": \"Excellent work! The gig worker was professional, punctual, and delivered high-quality results. Highly recommended!\",\n  \"is_public\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Get All Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has paginated reviews', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('reviews');",
+                  "    pm.expect(jsonData).to.have.property('pagination');",
+                  "    pm.expect(jsonData.reviews).to.be.an('array');",
+                  "    pm.expect(jsonData.pagination).to.have.property('page');",
+                  "    pm.expect(jsonData.pagination).to.have.property('limit');",
+                  "    pm.expect(jsonData.pagination).to.have.property('total');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Review by ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has review details', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('job_id');",
+                  "    pm.expect(jsonData).to.have.property('rating');",
+                  "    pm.expect(jsonData).to.have.property('reviewer_name');",
+                  "    pm.expect(jsonData).to.have.property('reviewee_name');",
+                  "    pm.expect(jsonData).to.have.property('job_title');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/{{test_review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "{{test_review_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Job Reviews",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has job reviews', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('job_id');",
+                  "    pm.expect(jsonData).to.have.property('reviews');",
+                  "    pm.expect(jsonData.reviews).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/jobs/{{test_job_id}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "jobs", "{{test_job_id}}", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Get User Review Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has review statistics', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('user_id');",
+                  "    pm.expect(jsonData).to.have.property('user_name');",
+                  "    pm.expect(jsonData).to.have.property('total_reviews');",
+                  "    pm.expect(jsonData).to.have.property('average_rating');",
+                  "    pm.expect(jsonData).to.have.property('rating_5_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_4_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_3_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_2_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_1_count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{gig_worker_id}}/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{gig_worker_id}}", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Get Platform Review Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has platform statistics', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('total_reviews');",
+                  "    pm.expect(jsonData).to.have.property('average_rating');",
+                  "    pm.expect(jsonData).to.have.property('reviewed_users');",
+                  "    pm.expect(jsonData).to.have.property('rating_5_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_4_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_3_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_2_count');",
+                  "    pm.expect(jsonData).to.have.property('rating_1_count');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Get Top Rated Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has top rated users', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('top_rated_users');",
+                  "    pm.expect(jsonData).to.have.property('limit');",
+                  "    pm.expect(jsonData.top_rated_users).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/top-rated?limit=5&role=gig_worker",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "top-rated"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5"
+                },
+                {
+                  "key": "role",
+                  "value": "gig_worker"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response indicates success', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('success');",
+                  "    pm.expect(jsonData.success).to.be.true;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"review_text\": \"Updated: Very good work! The gig worker was professional and delivered quality results.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/{{test_review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "{{test_review_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Filter Reviews by Rating",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has filtered reviews', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('reviews');",
+                  "    pm.expect(jsonData.reviews).to.be.an('array');",
+                  "    ",
+                  "    // Check that all reviews meet the rating filter",
+                  "    jsonData.reviews.forEach(review => {",
+                  "        pm.expect(review.rating).to.be.at.least(4);",
+                  "    });",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews?min_rating=4&sort_by=rating&sort_order=desc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews"],
+              "query": [
+                {
+                  "key": "min_rating",
+                  "value": "4"
+                },
+                {
+                  "key": "sort_by",
+                  "value": "rating"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "desc"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Review - Invalid Rating",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 400', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "",
+                  "pm.test('Error message about rating', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.include('rating');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": {{test_job_id}},\n  \"reviewer_id\": {{consumer_id}},\n  \"reviewee_id\": {{gig_worker_id}},\n  \"rating\": 6,\n  \"review_text\": \"This should fail due to invalid rating\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews"]
+            }
+          }
+        },
+        {
+          "name": "Create Duplicate Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 409', function () {",
+                  "    pm.response.to.have.status(409);",
+                  "});",
+                  "",
+                  "pm.test('Error message about existing review', function () {",
+                  "    const responseText = pm.response.text();",
+                  "    pm.expect(responseText).to.include('already exists');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": {{test_job_id}},\n  \"reviewer_id\": {{consumer_id}},\n  \"reviewee_id\": {{gig_worker_id}},\n  \"rating\": 3,\n  \"review_text\": \"This should fail due to duplicate review\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews"]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Error Handling Tests",
       "item": [
         {

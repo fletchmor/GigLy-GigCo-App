@@ -26,6 +26,14 @@ func GetHandlers(r chi.Router) {
 	r.Get("/api/v1/jobs/{id}", api.GetJobByID)   // Any authenticated user
 	r.Get("/api/v1/jobs/my-jobs", api.GetMyJobs) // Any authenticated user
 	r.With(middleware.RequireRole("gig_worker")).Get("/api/v1/jobs/available", api.GetAvailableJobs)
+
+	// Review Management
+	r.Get("/api/v1/reviews", api.GetReviews)            // Any authenticated user (public reviews only)
+	r.Get("/api/v1/reviews/{id}", api.GetReviewByID)    // Any authenticated user
+	r.Get("/api/v1/jobs/{id}/reviews", api.GetJobReviews) // Any authenticated user
+	r.Get("/api/v1/users/{id}/reviews", api.GetUserReviewStats) // Any authenticated user
+	r.Get("/api/v1/reviews/stats", api.GetPlatformReviewStats) // Any authenticated user
+	r.Get("/api/v1/reviews/top-rated", api.GetTopRatedUsers) // Any authenticated user
 }
 
 func PostHandlers(r chi.Router) {
@@ -55,6 +63,9 @@ func PostHandlers(r chi.Router) {
 	r.With(middleware.RequireRole("gig_worker")).Post("/api/v1/jobs/{id}/reject", api.RejectJob)
 	r.With(middleware.RequireRoles("admin", "consumer")).Post("/api/v1/jobs/{id}/review", api.SubmitReview)
 
+	// Review Management
+	r.With(middleware.RequireRoles("admin", "consumer", "gig_worker")).Post("/api/v1/reviews", api.CreateReview)
+
 	// Schedule Management
 	r.Post("/api/v1/schedules/create", api.CreateSchedule) // Any authenticated user
 
@@ -72,6 +83,9 @@ func PutHandlers(r chi.Router) {
 
 	// Job Management
 	r.With(middleware.RequireRoles("admin", "consumer")).Put("/api/v1/jobs/{id}", api.UpdateJob)
+
+	// Review Management
+	r.With(middleware.RequireRoles("admin", "consumer", "gig_worker")).Put("/api/v1/reviews/{id}", api.UpdateReview)
 }
 
 func DeleteHandlers(r chi.Router) {
@@ -83,4 +97,7 @@ func DeleteHandlers(r chi.Router) {
 
 	// Job Management
 	r.With(middleware.RequireRoles("admin", "consumer")).Delete("/api/v1/jobs/{id}", api.CancelJob)
+
+	// Review Management
+	r.With(middleware.RequireRoles("admin", "consumer", "gig_worker")).Delete("/api/v1/reviews/{id}", api.DeleteReview)
 }

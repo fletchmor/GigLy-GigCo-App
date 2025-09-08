@@ -377,7 +377,8 @@ func RejectJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SubmitReview allows users to submit reviews for jobs
+// SubmitReview allows users to submit reviews for jobs (deprecated - use CreateReview)
+// This function is kept for backward compatibility with existing Postman tests
 func SubmitReview(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -391,7 +392,7 @@ func SubmitReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Parse request body
+	// Parse request body - legacy format
 	var req struct {
 		ReviewerID int    `json:"reviewer_id"`
 		Rating     int    `json:"rating"`
@@ -413,14 +414,15 @@ func SubmitReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get job information
+	// Get job information to determine reviewee
 	var status string
+	var consumerID, gigWorkerID sql.NullInt32
 	query := `
-		SELECT COALESCE(status, 'posted') as status
+		SELECT COALESCE(status, 'posted') as status, consumer_id, gig_worker_id
 		FROM jobs 
 		WHERE id = $1
 	`
-	err = config.DB.QueryRow(query, jobID).Scan(&status)
+	err = config.DB.QueryRow(query, jobID).Scan(&status, &consumerID, &gigWorkerID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Job not found", http.StatusNotFound)
@@ -433,27 +435,49 @@ func SubmitReview(w http.ResponseWriter, r *http.Request) {
 
 	// Check if job is in the right status for review submission
 	if status != "completed" {
-		if status == "posted" {
-			http.Error(w, "Job must be completed before submitting a review", http.StatusBadRequest)
-			return
-		}
-		if status == "in_progress" {
-			http.Error(w, "Job must be completed before submitting a review", http.StatusBadRequest)
-			return
-		}
-		http.Error(w, fmt.Sprintf("Job cannot accept reviews in current status: %s", status), http.StatusBadRequest)
+		http.Error(w, "Job must be completed before submitting a review", http.StatusBadRequest)
 		return
 	}
 
-	// Store review in database (simplified for testing)
+	// Determine reviewee ID based on who is submitting the review
+	var revieweeID int
+	if consumerID.Valid && int(consumerID.Int32) == req.ReviewerID {
+		// Consumer reviewing gig worker
+		if gigWorkerID.Valid {
+			revieweeID = int(gigWorkerID.Int32)
+		} else {
+			http.Error(w, "Cannot determine reviewee for this job", http.StatusBadRequest)
+			return
+		}
+	} else if gigWorkerID.Valid && int(gigWorkerID.Int32) == req.ReviewerID {
+		// Gig worker reviewing consumer
+		revieweeID = int(consumerID.Int32)
+	} else {
+		http.Error(w, "Reviewer must be a participant in this job", http.StatusBadRequest)
+		return
+	}
+
+	// Check if review already exists
+	var existingID int
+	checkQuery := `SELECT id FROM job_reviews WHERE job_id = $1 AND reviewer_id = $2`
+	err = config.DB.QueryRow(checkQuery, jobID, req.ReviewerID).Scan(&existingID)
+	if err == nil {
+		http.Error(w, "Review already exists for this job", http.StatusConflict)
+		return
+	} else if err != sql.ErrNoRows {
+		log.Printf("Database error checking existing review: %v", err)
+	}
+
+	// Store review in job_reviews table
 	insertQuery := `
-		INSERT INTO reviews (job_id, reviewer_id, reviewee_id, rating, comment, created_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO job_reviews (job_id, reviewer_id, reviewee_id, rating, review_text, is_public, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, true, NOW(), NOW())
 	`
-	_, err = config.DB.Exec(insertQuery, jobID, req.ReviewerID, 0, req.Rating, req.Comment)
+	_, err = config.DB.Exec(insertQuery, jobID, req.ReviewerID, revieweeID, req.Rating, req.Comment)
 	if err != nil {
-		// If reviews table doesn't exist, just acknowledge the review
-		log.Printf("Could not store review (table may not exist): %v", err)
+		log.Printf("Database error storing review: %v", err)
+		http.Error(w, "Failed to store review", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
