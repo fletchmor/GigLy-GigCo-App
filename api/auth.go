@@ -46,6 +46,26 @@ type RegisterResponse struct {
 	Token         string    `json:"token,omitempty"` // JWT token (placeholder for now)
 }
 
+// LoginRequest represents the login request payload
+type LoginRequest struct {
+	Email    string `json:"email" example:"user@example.com"`
+	Password string `json:"password" example:"password123"`
+}
+
+// LoginResponse represents the login response
+type LoginResponse struct {
+	ID            int       `json:"id"`
+	UUID          string    `json:"uuid"`
+	Name          string    `json:"name"`
+	Email         string    `json:"email"`
+	Role          string    `json:"role"`
+	IsActive      bool      `json:"is_active"`
+	EmailVerified bool      `json:"email_verified"`
+	PhoneVerified bool      `json:"phone_verified"`
+	CreatedAt     time.Time `json:"created_at"`
+	Token         string    `json:"token"`
+}
+
 // Email validation regex
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
@@ -53,6 +73,18 @@ var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]
 var phoneRegex = regexp.MustCompile(`^\+?1?[-.\s]?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}$`)
 
 // RegisterUser handles user registration with role selection
+// RegisterUser godoc
+// @Summary Register a new user
+// @Description Register a new user in the system with email, name and role
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param user body RegisterRequest true "Registration data"
+// @Success 201 {object} RegisterResponse
+// @Failure 400 {object} map[string]string "Invalid request data"
+// @Failure 409 {object} map[string]string "Email already exists"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/register [post]
 func RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 
@@ -325,17 +357,25 @@ func cleanPhoneNumber(phone string) string {
 	return cleaned
 }
 
-// LoginUser handles user login
+// LoginUser godoc
+// @Summary Login user
+// @Description Authenticate user and return JWT token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param credentials body LoginRequest true "Login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} map[string]string "Invalid request data"
+// @Failure 401 {object} map[string]string "Invalid credentials"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /auth/login [post]
 func LoginUser(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var loginReq struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+	var loginReq LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&loginReq)
 	if err != nil {

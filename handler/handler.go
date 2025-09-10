@@ -5,12 +5,22 @@ import (
 	"app/internal/middleware"
 
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
-func GetHandlers(r chi.Router) {
+// GetPublicHandlers handles public GET routes (no authentication required)
+func GetPublicHandlers(r chi.Router) {
 	r.Get("/health", api.HealthCheck)
 	r.Get("/", middleware.ServeEmailForm)
 	r.Get("/email-submit", middleware.HandleEmailSubmission)
+	
+	// Swagger documentation
+	r.Get("/swagger/*", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+}
+
+func GetHandlers(r chi.Router) {
 
 	// User Management - Protected endpoints
 	r.With(middleware.RequireRoles("admin", "consumer")).Get("/api/v1/customers/{id}", api.GetCustomerByID)
@@ -36,8 +46,9 @@ func GetHandlers(r chi.Router) {
 	r.Get("/api/v1/reviews/top-rated", api.GetTopRatedUsers) // Any authenticated user
 }
 
-func PostHandlers(r chi.Router) {
-	// Authentication
+// PostPublicHandlers handles public POST routes (no authentication required)
+func PostPublicHandlers(r chi.Router) {
+	// Authentication endpoints (public)
 	r.Post("/api/v1/auth/register", api.RegisterUser)
 	r.Post("/api/v1/auth/login", api.LoginUser)
 	r.Post("/api/v1/auth/logout", api.LogoutUser)
@@ -45,6 +56,9 @@ func PostHandlers(r chi.Router) {
 	r.Post("/api/v1/auth/verify-email", api.VerifyEmail)
 	r.Post("/api/v1/auth/forgot-password", api.ForgotPassword)
 	r.Post("/api/v1/auth/reset-password", api.ResetPassword)
+}
+
+func PostHandlers(r chi.Router) {
 
 	// User Management - Protected endpoints
 	r.With(middleware.RequireRole("admin")).Post("/api/v1/users/create", api.CreateUser)

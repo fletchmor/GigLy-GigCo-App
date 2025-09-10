@@ -16,6 +16,15 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// HealthCheck godoc
+// @Summary Check API health status
+// @Description Check if the API and database are healthy
+// @Tags health
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 503 {object} map[string]interface{}
+// @Router /health [get]
 func HealthCheck(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -456,7 +465,21 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(job)
 }
 
-// GetJobs handles job listing with filters and pagination
+// GetJobs godoc
+// @Summary Get jobs list
+// @Description Get a list of jobs with optional filters and pagination
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param limit query int false "Items per page" default(10)
+// @Param status query string false "Job status filter"
+// @Param location query string false "Location filter"
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /jobs [get]
 func GetJobs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -1993,7 +2016,18 @@ func validateJobCreateRequest(req *model.JobCreateRequest) error {
 	return nil
 }
 
-// GetUserProfile retrieves the current user's profile
+// GetUserProfile godoc
+// @Summary Get current user profile
+// @Description Get the profile of the currently authenticated user
+// @Tags users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} model.User
+// @Failure 401 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/profile [get]
 func GetUserProfile(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
