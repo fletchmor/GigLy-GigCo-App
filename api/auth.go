@@ -423,20 +423,17 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
-		"success": true,
-		"message": "Login successful",
-		"user": map[string]interface{}{
-			"id":             user.ID,
-			"uuid":           user.Uuid,
-			"name":           user.Name,
-			"email":          user.Email,
-			"role":           user.Role,
-			"is_active":      user.IsActive,
-			"email_verified": user.EmailVerified,
-			"phone_verified": user.PhoneVerified,
-		},
-		"token": token,
+	response := LoginResponse{
+		ID:            user.ID,
+		UUID:          user.Uuid,
+		Name:          user.Name,
+		Email:         user.Email,
+		Role:          user.Role,
+		IsActive:      user.IsActive,
+		EmailVerified: user.EmailVerified,
+		PhoneVerified: user.PhoneVerified,
+		CreatedAt:     user.CreatedAt,
+		Token:         token,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

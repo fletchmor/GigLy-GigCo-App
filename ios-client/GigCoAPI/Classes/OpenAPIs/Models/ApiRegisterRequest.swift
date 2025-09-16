@@ -19,19 +19,21 @@ public struct ApiRegisterRequest: Codable, JSONEncodable, Hashable {
     public var latitude: Double?
     public var longitude: Double?
     public var name: String?
+    public var password: String?
     public var phone: String?
     public var placeId: String?
     public var role: String?
     /** For gig workers */
     public var skills: [String]?
 
-    public init(address: String? = nil, availability: String? = nil, email: String? = nil, latitude: Double? = nil, longitude: Double? = nil, name: String? = nil, phone: String? = nil, placeId: String? = nil, role: String? = nil, skills: [String]? = nil) {
+    public init(address: String? = nil, availability: String? = nil, email: String? = nil, latitude: Double? = nil, longitude: Double? = nil, name: String? = nil, password: String? = nil, phone: String? = nil, placeId: String? = nil, role: String? = nil, skills: [String]? = nil) {
         self.address = address
         self.availability = availability
         self.email = email
         self.latitude = latitude
         self.longitude = longitude
         self.name = name
+        self.password = password
         self.phone = phone
         self.placeId = placeId
         self.role = role
@@ -45,6 +47,7 @@ public struct ApiRegisterRequest: Codable, JSONEncodable, Hashable {
         case latitude
         case longitude
         case name
+        case password
         case phone
         case placeId = "place_id"
         case role
@@ -61,6 +64,7 @@ public struct ApiRegisterRequest: Codable, JSONEncodable, Hashable {
         try container.encodeIfPresent(latitude, forKey: .latitude)
         try container.encodeIfPresent(longitude, forKey: .longitude)
         try container.encodeIfPresent(name, forKey: .name)
+        try container.encodeIfPresent(password, forKey: .password)
         try container.encodeIfPresent(phone, forKey: .phone)
         try container.encodeIfPresent(placeId, forKey: .placeId)
         try container.encodeIfPresent(role, forKey: .role)
