@@ -1,0 +1,555 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		D3D70CE12E6F9F1E00D1C77F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D3D70CC92E6F9F1D00D1C77F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D3D70CD02E6F9F1D00D1C77F;
+			remoteInfo = "GigCo-Mobile";
+		};
+		D3D70CEB2E6F9F1E00D1C77F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = D3D70CC92E6F9F1D00D1C77F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = D3D70CD02E6F9F1D00D1C77F;
+			remoteInfo = "GigCo-Mobile";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		D3D70CD12E6F9F1D00D1C77F /* GigCo-Mobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "GigCo-Mobile.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3D70CE02E6F9F1E00D1C77F /* GigCo-MobileTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GigCo-MobileTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		D3D70CEA2E6F9F1E00D1C77F /* GigCo-MobileUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "GigCo-MobileUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		D3D70CD32E6F9F1D00D1C77F /* GigCo-Mobile */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "GigCo-Mobile";
+			sourceTree = "<group>";
+		};
+		D3D70CE32E6F9F1E00D1C77F /* GigCo-MobileTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "GigCo-MobileTests";
+			sourceTree = "<group>";
+		};
+		D3D70CED2E6F9F1E00D1C77F /* GigCo-MobileUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "GigCo-MobileUITests";
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D3D70CCE2E6F9F1D00D1C77F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CDD2E6F9F1E00D1C77F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CE72E6F9F1E00D1C77F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		D3D70CC82E6F9F1D00D1C77F = {
+			isa = PBXGroup;
+			children = (
+				D3D70CD32E6F9F1D00D1C77F /* GigCo-Mobile */,
+				D3D70CE32E6F9F1E00D1C77F /* GigCo-MobileTests */,
+				D3D70CED2E6F9F1E00D1C77F /* GigCo-MobileUITests */,
+				D3D70CD22E6F9F1D00D1C77F /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D3D70CD22E6F9F1D00D1C77F /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				D3D70CD12E6F9F1D00D1C77F /* GigCo-Mobile.app */,
+				D3D70CE02E6F9F1E00D1C77F /* GigCo-MobileTests.xctest */,
+				D3D70CEA2E6F9F1E00D1C77F /* GigCo-MobileUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		D3D70CD02E6F9F1D00D1C77F /* GigCo-Mobile */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3D70CF42E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-Mobile" */;
+			buildPhases = (
+				D3D70CCD2E6F9F1D00D1C77F /* Sources */,
+				D3D70CCE2E6F9F1D00D1C77F /* Frameworks */,
+				D3D70CCF2E6F9F1D00D1C77F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D3D70CD32E6F9F1D00D1C77F /* GigCo-Mobile */,
+			);
+			name = "GigCo-Mobile";
+			packageProductDependencies = (
+			);
+			productName = "GigCo-Mobile";
+			productReference = D3D70CD12E6F9F1D00D1C77F /* GigCo-Mobile.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D3D70CDF2E6F9F1E00D1C77F /* GigCo-MobileTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3D70CF72E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-MobileTests" */;
+			buildPhases = (
+				D3D70CDC2E6F9F1E00D1C77F /* Sources */,
+				D3D70CDD2E6F9F1E00D1C77F /* Frameworks */,
+				D3D70CDE2E6F9F1E00D1C77F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D3D70CE22E6F9F1E00D1C77F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D3D70CE32E6F9F1E00D1C77F /* GigCo-MobileTests */,
+			);
+			name = "GigCo-MobileTests";
+			packageProductDependencies = (
+			);
+			productName = "GigCo-MobileTests";
+			productReference = D3D70CE02E6F9F1E00D1C77F /* GigCo-MobileTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		D3D70CE92E6F9F1E00D1C77F /* GigCo-MobileUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D3D70CFA2E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-MobileUITests" */;
+			buildPhases = (
+				D3D70CE62E6F9F1E00D1C77F /* Sources */,
+				D3D70CE72E6F9F1E00D1C77F /* Frameworks */,
+				D3D70CE82E6F9F1E00D1C77F /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				D3D70CEC2E6F9F1E00D1C77F /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D3D70CED2E6F9F1E00D1C77F /* GigCo-MobileUITests */,
+			);
+			name = "GigCo-MobileUITests";
+			packageProductDependencies = (
+			);
+			productName = "GigCo-MobileUITests";
+			productReference = D3D70CEA2E6F9F1E00D1C77F /* GigCo-MobileUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		D3D70CC92E6F9F1D00D1C77F /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1640;
+				LastUpgradeCheck = 1640;
+				TargetAttributes = {
+					D3D70CD02E6F9F1D00D1C77F = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					D3D70CDF2E6F9F1E00D1C77F = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = D3D70CD02E6F9F1D00D1C77F;
+					};
+					D3D70CE92E6F9F1E00D1C77F = {
+						CreatedOnToolsVersion = 16.4;
+						TestTargetID = D3D70CD02E6F9F1D00D1C77F;
+					};
+				};
+			};
+			buildConfigurationList = D3D70CCC2E6F9F1D00D1C77F /* Build configuration list for PBXProject "GigCo-Mobile" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = D3D70CC82E6F9F1D00D1C77F;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D3D70CD22E6F9F1D00D1C77F /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D3D70CD02E6F9F1D00D1C77F /* GigCo-Mobile */,
+				D3D70CDF2E6F9F1E00D1C77F /* GigCo-MobileTests */,
+				D3D70CE92E6F9F1E00D1C77F /* GigCo-MobileUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D3D70CCF2E6F9F1D00D1C77F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CDE2E6F9F1E00D1C77F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CE82E6F9F1E00D1C77F /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		D3D70CCD2E6F9F1D00D1C77F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CDC2E6F9F1E00D1C77F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3D70CE62E6F9F1E00D1C77F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		D3D70CE22E6F9F1E00D1C77F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D3D70CD02E6F9F1D00D1C77F /* GigCo-Mobile */;
+			targetProxy = D3D70CE12E6F9F1E00D1C77F /* PBXContainerItemProxy */;
+		};
+		D3D70CEC2E6F9F1E00D1C77F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = D3D70CD02E6F9F1D00D1C77F /* GigCo-Mobile */;
+			targetProxy = D3D70CEB2E6F9F1E00D1C77F /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		D3D70CF22E6F9F1E00D1C77F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		D3D70CF32E6F9F1E00D1C77F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		D3D70CF52E6F9F1E00D1C77F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-Mobile";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		D3D70CF62E6F9F1E00D1C77F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-Mobile";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D3D70CF82E6F9F1E00D1C77F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-MobileTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GigCo-Mobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GigCo-Mobile";
+			};
+			name = Debug;
+		};
+		D3D70CF92E6F9F1E00D1C77F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-MobileTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/GigCo-Mobile.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/GigCo-Mobile";
+			};
+			name = Release;
+		};
+		D3D70CFB2E6F9F1E00D1C77F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-MobileUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "GigCo-Mobile";
+			};
+			name = Debug;
+		};
+		D3D70CFC2E6F9F1E00D1C77F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "GigCo.GigCo-MobileUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = "GigCo-Mobile";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		D3D70CCC2E6F9F1D00D1C77F /* Build configuration list for PBXProject "GigCo-Mobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3D70CF22E6F9F1E00D1C77F /* Debug */,
+				D3D70CF32E6F9F1E00D1C77F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3D70CF42E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-Mobile" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3D70CF52E6F9F1E00D1C77F /* Debug */,
+				D3D70CF62E6F9F1E00D1C77F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3D70CF72E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-MobileTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3D70CF82E6F9F1E00D1C77F /* Debug */,
+				D3D70CF92E6F9F1E00D1C77F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D3D70CFA2E6F9F1E00D1C77F /* Build configuration list for PBXNativeTarget "GigCo-MobileUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D3D70CFB2E6F9F1E00D1C77F /* Debug */,
+				D3D70CFC2E6F9F1E00D1C77F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = D3D70CC92E6F9F1D00D1C77F /* Project object */;
+}

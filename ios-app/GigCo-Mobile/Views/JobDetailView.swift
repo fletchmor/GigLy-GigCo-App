@@ -1,0 +1,284 @@
+//
+//  JobDetailView.swift
+//  GigCo-Mobile
+//
+//  Created by Claude on 9/9/25.
+//
+
+import SwiftUI
+
+struct JobDetailView: View {
+    let job: Job
+    @EnvironmentObject var authService: AuthService
+    @StateObject private var jobService = JobService()
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var showingAcceptAlert = false
+    @State private var showError = false
+    @State private var errorMessage = ""
+    
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                // Header Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(job.title)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            
+                            Text(job.category ?? "General")
+                                .font(.caption)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(4)
+                        }
+                        
+                        Spacer()
+                        
+                        VStack(alignment: .trailing) {
+                            if let price = job.price {
+                                Text("$\(String(format: "%.2f", price))")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.green)
+                            }
+                            
+                            Text(job.status?.capitalized ?? "Unknown")
+                                .font(.caption)
+                                .foregroundColor(statusColor)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // Job Information
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.headline)
+                        
+                        Text(job.description)
+                            .font(.body)
+                    }
+                    
+                    if let location = job.location {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Location")
+                                .font(.headline)
+                            
+                            HStack {
+                                Image(systemName: "location")
+                                    .foregroundColor(.blue)
+                                Text(location)
+                            }
+                        }
+                    }
+                    
+                    if let scheduledFor = job.scheduledFor {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Scheduled For")
+                                .font(.headline)
+                            
+                            HStack {
+                                Image(systemName: "calendar")
+                                    .foregroundColor(.blue)
+                                Text(formatDate(scheduledFor))
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color.white)
+                .cornerRadius(12)
+                .shadow(radius: 1)
+                
+                // Reviews Section - TODO: Implement when review system is available
+                // Placeholder for future reviews functionality
+                
+                // Action Buttons
+                VStack(spacing: 12) {
+                    if canAcceptJob {
+                        Button("Accept Job") {
+                            showingAcceptAlert = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    if canStartJob {
+                        Button("Start Job") {
+                            startJob()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    if canCompleteJob {
+                        Button("Complete Job") {
+                            completeJob()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                    }
+                    
+                    // Review functionality temporarily removed - TODO: Implement when review system is available
+                    
+                    if canCancelJob {
+                        Button("Cancel Job") {
+                            cancelJob()
+                        }
+                        .buttonStyle(.bordered)
+                        .foregroundColor(.red)
+                        .controlSize(.large)
+                        .frame(maxWidth: .infinity)
+                    }
+                }
+                .padding()
+                
+                Spacer()
+            }
+            .padding()
+        }
+        .navigationTitle("Job Details")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Accept Job", isPresented: $showingAcceptAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Accept") {
+                acceptJob()
+            }
+        } message: {
+            Text("Are you sure you want to accept this job?")
+        }
+        .alert("Error", isPresented: $showError) {
+            Button("OK") { }
+        } message: {
+            Text(errorMessage)
+        }
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var statusColor: Color {
+        switch job.status?.lowercased() {
+        case "open":
+            return .green
+        case "in_progress":
+            return .orange
+        case "completed":
+            return .blue
+        case "cancelled":
+            return .red
+        default:
+            return .secondary
+        }
+    }
+    
+    private var canAcceptJob: Bool {
+        job.status == "open" && authService.currentUser?.role == "gig_worker"
+    }
+    
+    private var canStartJob: Bool {
+        job.status == "accepted" && authService.currentUser?.role == "gig_worker"
+    }
+    
+    private var canCompleteJob: Bool {
+        job.status == "in_progress" && authService.currentUser?.role == "gig_worker"
+    }
+    
+    
+    private var canCancelJob: Bool {
+        (job.status == "open" || job.status == "accepted") && 
+        authService.currentUser?.role == "consumer"
+    }
+    
+    // MARK: - Helper Functions
+    
+    private func formatDate(_ dateString: String) -> String {
+        let formatter = ISO8601DateFormatter()
+        if let date = formatter.date(from: dateString) {
+            let displayFormatter = DateFormatter()
+            displayFormatter.dateStyle = .medium
+            displayFormatter.timeStyle = .short
+            return displayFormatter.string(from: date)
+        }
+        return dateString
+    }
+    
+    
+    // MARK: - Job Actions
+    
+    private func acceptJob() {
+        guard let jobId = job.id else { return }
+        
+        Task {
+            do {
+                try await jobService.acceptJob(jobId)
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    private func startJob() {
+        guard let jobId = job.id else { return }
+        
+        Task {
+            do {
+                try await jobService.startJob(jobId)
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    private func completeJob() {
+        guard let jobId = job.id else { return }
+        
+        Task {
+            do {
+                try await jobService.completeJob(jobId)
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+    
+    private func cancelJob() {
+        guard let jobId = job.id else { return }
+        
+        Task {
+            do {
+                try await jobService.cancelJob(jobId)
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+}
