@@ -580,18 +580,26 @@ func GetJobs(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var job model.Job
 		var consumerName, consumerUUID string
+		var notes sql.NullString
 
 		err := rows.Scan(
 			&job.ID, &job.UUID, &job.ConsumerID, &job.GigWorkerID, &job.Title, &job.Description,
 			&job.Category, &job.LocationAddress, &job.LocationLatitude, &job.LocationLongitude,
 			&job.EstimatedDurationHours, &job.PayRatePerHour, &job.TotalPay, &job.Status,
 			&job.ScheduledStart, &job.ScheduledEnd, &job.ActualStart, &job.ActualEnd,
-			&job.Notes, &job.CreatedAt, &job.UpdatedAt,
+			&notes, &job.CreatedAt, &job.UpdatedAt,
 			&consumerName, &consumerUUID,
 		)
 		if err != nil {
 			log.Printf("Error scanning job row: %v", err)
 			continue
+		}
+
+		// Handle nullable notes field
+		if notes.Valid {
+			job.Notes = notes.String
+		} else {
+			job.Notes = ""
 		}
 
 		jobResponse := model.JobResponse{

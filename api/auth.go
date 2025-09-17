@@ -14,12 +14,14 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // RegisterRequest represents the registration request payload
 type RegisterRequest struct {
 	Name         string   `json:"name"`
 	Email        string   `json:"email"`
+	Password     string   `json:"password"`
 	Phone        string   `json:"phone,omitempty"`
 	Address      string   `json:"address"`
 	Role         string   `json:"role"`
@@ -132,13 +134,21 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("Password hashing error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	// Insert new user into people table
 	insertQuery := `
 		INSERT INTO people (
-			email, name, phone, address, latitude, longitude, place_id, 
+			email, name, password_hash, phone, address, latitude, longitude, place_id,
 			role, is_active, email_verified, phone_verified, created_at, updated_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 		) RETURNING id, uuid, created_at`
 
 	var response RegisterResponse
@@ -158,6 +168,7 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		insertQuery,
 		req.Email,
 		req.Name,
+		string(hashedPassword),
 		nullString(req.Phone),
 		req.Address,
 		nullFloat64(req.Latitude),
@@ -234,11 +245,19 @@ func validateRegistrationRequest(req *RegisterRequest) error {
 	if req.Email == "" {
 		return fmt.Errorf("email is required")
 	}
+	if req.Password == "" {
+		return fmt.Errorf("password is required")
+	}
 	if req.Address == "" {
 		return fmt.Errorf("address is required")
 	}
 	if req.Role == "" {
 		return fmt.Errorf("role is required")
+	}
+
+	// Validate password strength
+	if len(req.Password) < 6 {
+		return fmt.Errorf("password must be at least 6 characters long")
 	}
 
 	// Validate email format

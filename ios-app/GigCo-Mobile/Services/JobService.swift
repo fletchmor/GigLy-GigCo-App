@@ -20,31 +20,62 @@ class JobService: ObservableObject {
     
     func getAllJobs() async throws {
         isLoading = true
-        
+
         do {
             let response = try await apiService.getJobs()
-            print("🟢 Jobs API response: \(response)")
-            // The response should contain jobs data
-            // For now, we'll work with the available data structure
-            self.jobs = [] // TODO: Parse actual job data when API response format is clarified
+            print("🟢 Jobs API response: \(response.jobs.count) jobs received")
+
+            // Convert JobResponse to Job model
+            self.jobs = response.jobs.map { jobResponse in
+                Job(
+                    id: jobResponse.id,
+                    uuid: jobResponse.uuid,
+                    title: jobResponse.title,
+                    description: jobResponse.description,
+                    category: jobResponse.category,
+                    location: jobResponse.locationAddress,
+                    price: jobResponse.totalPay,
+                    status: jobResponse.status,
+                    customerId: jobResponse.consumerID,
+                    gigworkerId: nil, // Not included in list response
+                    createdAt: jobResponse.createdAt,
+                    updatedAt: jobResponse.updatedAt,
+                    scheduledFor: jobResponse.scheduledStart
+                )
+            }
+
+            print("🟢 Successfully converted \(self.jobs.count) jobs")
         } catch {
             print("🔴 Failed to fetch all jobs: \(error)")
+            self.jobs = []
             throw error
         }
-        
+
         isLoading = false
     }
     
     func getAvailableJobs() async throws {
         // Filter available jobs from all jobs based on status
         try await getAllJobs()
-        self.availableJobs = jobs.filter { $0.status == "open" || $0.status == "available" }
+        self.availableJobs = jobs.filter { $0.status == "posted" || $0.status == "open" || $0.status == "available" }
     }
     
     func getMyJobs() async throws {
-        // This would require user ID filtering which isn't available in current API
-        // For now, we'll simulate by returning empty array
+        // Note: This method will be called from views that have access to AuthService
+        // For now, we'll return empty and let the view handle filtering
         self.myJobs = []
+    }
+
+    func getMyJobs(for userID: Int) async throws {
+        // Get all jobs first, then filter by current user
+        try await getAllJobs()
+
+        // Filter jobs where current user is the consumer (posted by current user)
+        self.myJobs = self.jobs.filter { job in
+            job.customerId == userID
+        }
+
+        print("🟢 Found \(self.myJobs.count) jobs for user ID \(userID)")
     }
     
     func getJobById(_ id: Int) async throws -> Job? {
@@ -80,8 +111,28 @@ class JobService: ObservableObject {
 
         print("🟢 JobService.createJob - Job created successfully: \(response)")
 
-        // Refresh the jobs list to include the new job
-        try await getAllJobs()
+        // Add the new job to our local jobs list immediately
+        let newJob = Job(
+            id: response.id,
+            uuid: response.uuid,
+            title: response.title,
+            description: response.description,
+            category: response.category,
+            location: response.locationAddress,
+            price: response.totalPay,
+            status: response.status,
+            customerId: response.consumerID ?? consumerID,
+            gigworkerId: nil,
+            createdAt: response.createdAt,
+            updatedAt: response.updatedAt,
+            scheduledFor: response.scheduledStart
+        )
+
+        // Add to jobs list
+        self.jobs.append(newJob)
+
+        // If this is the current user's job, add to myJobs
+        self.myJobs.append(newJob)
 
         return response
     }

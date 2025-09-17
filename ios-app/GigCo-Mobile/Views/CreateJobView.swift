@@ -23,6 +23,8 @@ struct CreateJobView: View {
     @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showSuccess = false
+    @State private var successMessage = ""
     
     private let categories = [
         "General", "Home Repair", "Cleaning", "Moving", "Delivery",
@@ -33,23 +35,50 @@ struct CreateJobView: View {
         NavigationView {
             Form {
                 Section(header: Text("Job Details")) {
-                    TextField("Job Title", text: $title)
-                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Job Title", text: $title)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        if !title.isEmpty && title.count < 3 {
+                            Text("Title must be at least 3 characters")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
+
                     Picker("Category", selection: $category) {
                         ForEach(categories, id: \.self) { category in
                             Text(category).tag(category)
                         }
                     }
-                    
+
                     TextField("Location", text: $location)
-                    
-                    TextField("Price ($)", text: $price)
-                        .keyboardType(.decimalPad)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextField("Price ($)", text: $price)
+                            .keyboardType(.decimalPad)
+                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                        if !price.isEmpty && (Double(price) == nil || Double(price) ?? 0 <= 0) {
+                            Text("Enter a valid price greater than $0")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                    }
                 }
                 
                 Section(header: Text("Description")) {
-                    TextEditor(text: $description)
-                        .frame(minHeight: 100)
+                    VStack(alignment: .leading, spacing: 4) {
+                        TextEditor(text: $description)
+                            .frame(minHeight: 100)
+                        if !description.isEmpty && description.count < 10 {
+                            Text("Description must be at least 10 characters")
+                                .font(.caption)
+                                .foregroundColor(.red)
+                        }
+                        Text("\(description.count) characters")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
                 }
                 
                 Section(header: Text("Scheduling")) {
@@ -93,6 +122,13 @@ struct CreateJobView: View {
             } message: {
                 Text(errorMessage)
             }
+            .alert("Success", isPresented: $showSuccess) {
+                Button("OK") {
+                    dismiss()
+                }
+            } message: {
+                Text(successMessage)
+            }
         }
     }
     
@@ -101,10 +137,18 @@ struct CreateJobView: View {
         !description.isEmpty &&
         !location.isEmpty &&
         !price.isEmpty &&
-        Double(price) != nil
+        Double(price) != nil &&
+        Double(price) ?? 0 > 0 &&
+        title.count >= 3 &&
+        description.count >= 10
     }
     
     private func createJob() {
+        print("🔵 CreateJobView - createJob called")
+        print("🔵 CreateJobView - authService.isAuthenticated: \(authService.isAuthenticated)")
+        print("🔵 CreateJobView - authService.currentUser: \(authService.currentUser?.name ?? "nil")")
+        print("🔵 CreateJobView - authService.currentUser.id: \(authService.currentUser?.id ?? -1)")
+
         guard isFormValid else {
             print("🔴 CreateJobView - Form validation failed")
             return
@@ -116,6 +160,8 @@ struct CreateJobView: View {
         guard let currentUser = authService.currentUser,
               let consumerID = currentUser.id else {
             print("🔴 CreateJobView - User not authenticated or missing user ID")
+            print("🔴 CreateJobView - currentUser: \(authService.currentUser?.name ?? "nil")")
+            print("🔴 CreateJobView - currentUser.id: \(authService.currentUser?.id ?? -1)")
             errorMessage = "User not authenticated or missing user ID"
             showError = true
             return
@@ -146,7 +192,8 @@ struct CreateJobView: View {
                 print("🟢 CreateJobView - Job created successfully: \(response)")
                 await MainActor.run {
                     isLoading = false
-                    dismiss()
+                    successMessage = "Job '\(response.title)' has been posted successfully!"
+                    showSuccess = true
                 }
             } catch {
                 print("🔴 CreateJobView - Job creation failed: \(error)")

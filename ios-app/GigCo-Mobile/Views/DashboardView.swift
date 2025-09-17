@@ -57,14 +57,28 @@ struct HomeTabView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        if let user = authService.currentUser {
-                            Text("Hello, \(user.name.components(separatedBy: " ").first ?? "User")!")
-                                .font(.subheadline)
-                                .foregroundColor(.blue)
-                        } else {
-                            Text("Find services or offer your skills")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
+                        HStack {
+                            if let user = authService.currentUser {
+                                Text("Hello, \(user.name.components(separatedBy: " ").first ?? "User")!")
+                                    .font(.subheadline)
+                                    .foregroundColor(.blue)
+                            } else {
+                                Text("Find services or offer your skills")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                            }
+
+                            Spacer()
+
+                            Button("Logout") {
+                                authService.logout()
+                            }
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.red.opacity(0.1))
+                            .cornerRadius(8)
                         }
                     }
                     .padding(.horizontal)

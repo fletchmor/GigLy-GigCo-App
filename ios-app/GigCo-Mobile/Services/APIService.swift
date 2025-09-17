@@ -221,6 +221,77 @@ class APIService: ObservableObject {
         }
     }
     
+    // MARK: - Jobs Methods
+
+    func getJobs() async throws -> JobsListResponse {
+        print("🔵 APIService.getJobs - Making direct URLSession request")
+
+        // Create URL
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs") else {
+            print("🔴 APIService.getJobs - Invalid URL")
+            throw APIError.invalidConfiguration
+        }
+
+        // Create request
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add authorization header if token exists
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.getJobs - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.getJobs - No data received")
+                    continuation.resume(throwing: APIError.noData)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.getJobs - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.invalidResponse)
+                    return
+                }
+
+                print("🔵 APIService.getJobs - HTTP Status: \(httpResponse.statusCode)")
+
+                // Check for success status
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    // Parse response
+                    do {
+                        let decoder = JSONDecoder()
+                        let jobsResponse = try decoder.decode(JobsListResponse.self, from: data)
+                        print("🟢 APIService.getJobs - Successfully parsed \(jobsResponse.jobs.count) jobs")
+                        continuation.resume(returning: jobsResponse)
+                    } catch {
+                        print("🔴 APIService.getJobs - Failed to parse response: \(error)")
+                        if let jsonString = String(data: data, encoding: .utf8) {
+                            print("🔴 APIService.getJobs - Raw response JSON: \(jsonString)")
+                        }
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    // Handle error response
+                    let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+                    print("🔴 APIService.getJobs - Server error: \(errorMessage)")
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, errorMessage))
+                }
+            }
+
+            task.resume()
+            print("🔵 APIService.getJobs - URLSession task started")
+        }
+    }
+
     // MARK: - User Methods
     
     func getUserProfile() async throws -> ModelUser {
@@ -330,12 +401,15 @@ class APIService: ObservableObject {
                     // Parse response
                     do {
                         let decoder = JSONDecoder()
-                        decoder.keyDecodingStrategy = .convertFromSnakeCase
+                        // Don't use convertFromSnakeCase since we're manually mapping keys
                         let jobResponse = try decoder.decode(JobCreateResponse.self, from: data)
                         print("🟢 APIService.createJob - Successfully parsed response: \(jobResponse)")
                         continuation.resume(returning: jobResponse)
                     } catch {
                         print("🔴 APIService.createJob - Failed to parse response: \(error)")
+                        if let jsonString = String(data: data, encoding: .utf8) {
+                            print("🔴 APIService.createJob - Raw response JSON: \(jsonString)")
+                        }
                         continuation.resume(throwing: error)
                     }
                 } else {
@@ -499,7 +573,8 @@ struct JobCreateResponse: Codable {
     let locationAddress: String?
     let totalPay: Double?
     let status: String
-    let consumerID: Int
+    let consumerID: Int?
+    let scheduledStart: String?
     let createdAt: String
     let updatedAt: String
 
@@ -508,6 +583,7 @@ struct JobCreateResponse: Codable {
         case locationAddress = "location_address"
         case totalPay = "total_pay"
         case consumerID = "consumer_id"
+        case scheduledStart = "scheduled_start"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
     }
@@ -534,5 +610,60 @@ struct GigWorkerCreateResponse: Codable {
         case isActive = "is_active"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
+    }
+}
+
+// MARK: - Jobs List Response Models
+
+struct JobsListResponse: Codable {
+    let jobs: [JobResponse]
+    let pagination: Pagination
+}
+
+struct JobResponse: Codable {
+    let id: Int
+    let uuid: String
+    let consumerID: Int
+    let title: String
+    let description: String
+    let category: String?
+    let locationAddress: String?
+    let totalPay: Double?
+    let status: String
+    let scheduledStart: String?
+    let createdAt: String
+    let updatedAt: String
+    let consumer: ConsumerSummary
+
+    enum CodingKeys: String, CodingKey {
+        case id, uuid, title, description, category, status
+        case consumerID = "consumer_id"
+        case locationAddress = "location_address"
+        case totalPay = "total_pay"
+        case scheduledStart = "scheduled_start"
+        case createdAt = "created_at"
+        case updatedAt = "updated_at"
+        case consumer
+    }
+}
+
+struct ConsumerSummary: Codable {
+    let id: Int
+    let uuid: String
+    let name: String
+}
+
+struct Pagination: Codable {
+    let page: Int
+    let limit: Int
+    let total: Int
+    let pages: Int
+    let hasNext: Bool
+    let hasPrev: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case page, limit, total, pages
+        case hasNext = "has_next"
+        case hasPrev = "has_prev"
     }
 }

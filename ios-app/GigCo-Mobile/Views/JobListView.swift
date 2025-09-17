@@ -34,6 +34,31 @@ struct JobListView: View {
                     Spacer()
                     ProgressView("Loading jobs...")
                     Spacer()
+                } else if currentJobs.isEmpty {
+                    VStack(spacing: 16) {
+                        Spacer()
+                        Image(systemName: "briefcase.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray)
+                        Text("No jobs found")
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                        if selectedTab == 2 && authService.currentUser?.role == "consumer" {
+                            Text("Create your first job posting!")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Button("Post a Job") {
+                                showingCreateJob = true
+                            }
+                            .buttonStyle(.borderedProminent)
+                        } else {
+                            Text("Pull to refresh")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
                 } else {
                     List {
                         ForEach(currentJobs) { job in
@@ -101,7 +126,12 @@ struct JobListView: View {
                     try await jobService.getAvailableJobs()
                 }
             case 2:
-                try await jobService.getMyJobs()
+                if let currentUser = authService.currentUser,
+                   let userID = currentUser.id {
+                    try await jobService.getMyJobs(for: userID)
+                } else {
+                    try await jobService.getMyJobs()
+                }
             default:
                 try await jobService.getAllJobs()
             }
