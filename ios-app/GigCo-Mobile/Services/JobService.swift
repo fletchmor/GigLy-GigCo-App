@@ -55,9 +55,39 @@ class JobService: ObservableObject {
     }
     
     func getAvailableJobs() async throws {
-        // Filter available jobs from all jobs based on status
-        try await getAllJobs()
-        self.availableJobs = jobs.filter { $0.status == "posted" || $0.status == "open" || $0.status == "available" }
+        isLoading = true
+
+        do {
+            let response = try await apiService.getAvailableJobs()
+            print("🟢 Available Jobs API response: \(response.jobs.count) jobs received")
+
+            // Convert JobResponse to Job model
+            self.availableJobs = response.jobs.map { jobResponse in
+                Job(
+                    id: jobResponse.id,
+                    uuid: jobResponse.uuid,
+                    title: jobResponse.title,
+                    description: jobResponse.description,
+                    category: jobResponse.category,
+                    location: jobResponse.locationAddress,
+                    price: jobResponse.totalPay,
+                    status: jobResponse.status,
+                    customerId: jobResponse.consumerID,
+                    gigworkerId: nil, // Will be set when job is accepted
+                    createdAt: jobResponse.createdAt,
+                    updatedAt: jobResponse.updatedAt,
+                    scheduledFor: jobResponse.scheduledStart
+                )
+            }
+
+            print("🟢 Successfully converted \(self.availableJobs.count) available jobs")
+        } catch {
+            print("🔴 Failed to fetch available jobs: \(error)")
+            self.availableJobs = []
+            throw error
+        }
+
+        isLoading = false
     }
     
     func getMyJobs() async throws {
@@ -66,16 +96,41 @@ class JobService: ObservableObject {
         self.myJobs = []
     }
 
-    func getMyJobs(for userID: Int) async throws {
-        // Get all jobs first, then filter by current user
-        try await getAllJobs()
+    func getMyJobs(for userID: Int, role: String) async throws {
+        isLoading = true
+        print("🔵 JobService.getMyJobs - Called with userID: \(userID), role: \(role)")
 
-        // Filter jobs where current user is the consumer (posted by current user)
-        self.myJobs = self.jobs.filter { job in
-            job.customerId == userID
+        do {
+            let response = try await apiService.getMyJobs(userID: userID, role: role)
+            print("🟢 My Jobs API response: \(response.jobs.count) jobs received")
+
+            // Convert JobResponse to Job model
+            self.myJobs = response.jobs.map { jobResponse in
+                Job(
+                    id: jobResponse.id,
+                    uuid: jobResponse.uuid,
+                    title: jobResponse.title,
+                    description: jobResponse.description,
+                    category: jobResponse.category,
+                    location: jobResponse.locationAddress,
+                    price: jobResponse.totalPay,
+                    status: jobResponse.status,
+                    customerId: jobResponse.consumerID,
+                    gigworkerId: nil, // Will be set when job is accepted
+                    createdAt: jobResponse.createdAt,
+                    updatedAt: jobResponse.updatedAt,
+                    scheduledFor: jobResponse.scheduledStart
+                )
+            }
+
+            print("🟢 Successfully converted \(self.myJobs.count) my jobs")
+        } catch {
+            print("🔴 Failed to fetch my jobs: \(error)")
+            self.myJobs = []
+            throw error
         }
 
-        print("🟢 Found \(self.myJobs.count) jobs for user ID \(userID)")
+        isLoading = false
     }
     
     func getJobById(_ id: Int) async throws -> Job? {
@@ -128,21 +183,58 @@ class JobService: ObservableObject {
             scheduledFor: response.scheduledStart
         )
 
+        print("🟢 JobService.createJob - Created job locally with customerId: \(newJob.customerId ?? -1)")
+        print("🟢 JobService.createJob - Current user should be: \(consumerID)")
+
         // Add to jobs list
         self.jobs.append(newJob)
 
         // If this is the current user's job, add to myJobs
         self.myJobs.append(newJob)
+        print("🟢 JobService.createJob - Added to myJobs. Total myJobs: \(self.myJobs.count)")
 
         return response
     }
     
-    func acceptJob(_ jobId: Int) async throws {
-        // TODO: Implement job acceptance when API endpoint is available
-        print("🔵 Would accept job ID: \(jobId)")
-        // For now, just simulate success
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-        print("🟢 Job acceptance simulated successfully")
+    func acceptJob(_ jobId: Int, gigWorkerID: Int) async throws {
+        print("🔵 Accepting job ID: \(jobId) for worker: \(gigWorkerID)")
+
+        do {
+            let response = try await apiService.acceptJob(jobID: jobId, gigWorkerID: gigWorkerID)
+            print("🟢 Job acceptance successful: \(response)")
+
+            // Update local job lists to reflect the acceptance
+            if let jobIndex = availableJobs.firstIndex(where: { $0.id == jobId }) {
+                var updatedJob = availableJobs[jobIndex]
+                updatedJob = Job(
+                    id: updatedJob.id,
+                    uuid: updatedJob.uuid,
+                    title: updatedJob.title,
+                    description: updatedJob.description,
+                    category: updatedJob.category,
+                    location: updatedJob.location,
+                    price: updatedJob.price,
+                    status: "accepted",
+                    customerId: updatedJob.customerId,
+                    gigworkerId: gigWorkerID,
+                    createdAt: updatedJob.createdAt,
+                    updatedAt: updatedJob.updatedAt,
+                    scheduledFor: updatedJob.scheduledFor
+                )
+
+                // Remove from available jobs and add to my jobs
+                availableJobs.remove(at: jobIndex)
+                myJobs.append(updatedJob)
+
+                // Also update in main jobs list
+                if let mainJobIndex = jobs.firstIndex(where: { $0.id == jobId }) {
+                    jobs[mainJobIndex] = updatedJob
+                }
+            }
+        } catch {
+            print("🔴 Failed to accept job: \(error)")
+            throw error
+        }
     }
     
     func startJob(_ jobId: Int) async throws {

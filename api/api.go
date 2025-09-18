@@ -428,7 +428,7 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 	job.TotalPay = req.TotalPay
 	job.ScheduledStart = req.ScheduledStart
 	job.ScheduledEnd = req.ScheduledEnd
-	job.Notes = req.Notes
+	job.Notes = customNullString(req.Notes)
 	job.Status = "posted"
 
 	// Start Temporal workflow for the job asynchronously to avoid blocking the response
@@ -596,11 +596,7 @@ func GetJobs(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Handle nullable notes field
-		if notes.Valid {
-			job.Notes = notes.String
-		} else {
-			job.Notes = ""
-		}
+		job.Notes = model.NullString{NullString: notes}
 
 		jobResponse := model.JobResponse{
 			Job: job,

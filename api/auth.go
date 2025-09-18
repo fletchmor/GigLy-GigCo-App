@@ -352,6 +352,13 @@ func nullString(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: true}
 }
 
+func customNullString(s string) model.NullString {
+	if s == "" {
+		return model.NullString{NullString: sql.NullString{Valid: false}}
+	}
+	return model.NullString{NullString: sql.NullString{String: s, Valid: true}}
+}
+
 func nullFloat64(f float64) sql.NullFloat64 {
 	if f == 0 {
 		return sql.NullFloat64{Valid: false}

@@ -315,7 +315,7 @@ struct GigWorkerSetupView: View {
 
         isLoading = true
 
-        let skillsArray = skills.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+        let _ = skills.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
         let hourlyRateValue = Double(hourlyRate) ?? 20.0
 
         // Create bio with skills and experience

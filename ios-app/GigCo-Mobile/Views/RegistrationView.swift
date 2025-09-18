@@ -21,6 +21,8 @@ struct RegistrationView: View {
     @State private var isLoading = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showPassword = false
+    @State private var showConfirmPassword = false
     
     var body: some View {
         NavigationView {
@@ -35,8 +37,53 @@ struct RegistrationView: View {
                 }
                 
                 Section(header: Text("Security")) {
-                    SecureField("Password", text: $password)
-                    SecureField("Confirm Password", text: $confirmPassword)
+                    HStack {
+                        ZStack(alignment: .leading) {
+                            TextField("Password", text: $password)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .foregroundColor(showPassword ? Color.primary : .clear)
+
+                            if !showPassword && !password.isEmpty {
+                                Text(String(repeating: "•", count: password.count))
+                                    .foregroundColor(.black)
+                                    .font(.system(size: 16))
+                                    .allowsHitTesting(false)
+                                    .padding(.leading, 8)
+                            }
+                        }
+
+                        Button(action: {
+                            showPassword.toggle()
+                        }) {
+                            Image(systemName: showPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+
+                    HStack {
+                        ZStack(alignment: .leading) {
+                            TextField("Confirm Password", text: $confirmPassword)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .foregroundColor(showConfirmPassword ? Color.primary : .clear)
+
+                            if !showConfirmPassword && !confirmPassword.isEmpty {
+                                Text(String(repeating: "•", count: confirmPassword.count))
+                                    .foregroundColor(.black)
+                                    .font(.system(size: 16))
+                                    .allowsHitTesting(false)
+                                    .padding(.leading, 8)
+                            }
+                        }
+
+                        Button(action: {
+                            showConfirmPassword.toggle()
+                        }) {
+                            Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
                 
                 Section(header: Text("Account Type")) {

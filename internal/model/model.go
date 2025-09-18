@@ -1,6 +1,49 @@
 package model
 
-import "time"
+import (
+	"database/sql"
+	"database/sql/driver"
+	"encoding/json"
+	"time"
+)
+
+// NullString is a custom type that handles both database NULL values and JSON serialization properly
+type NullString struct {
+	sql.NullString
+}
+
+// MarshalJSON implements the json.Marshaler interface
+func (ns NullString) MarshalJSON() ([]byte, error) {
+	if !ns.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(ns.String)
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface
+func (ns *NullString) UnmarshalJSON(data []byte) error {
+	var s *string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	if s != nil {
+		ns.String = *s
+		ns.Valid = true
+	} else {
+		ns.Valid = false
+	}
+	return nil
+}
+
+// Scan implements the sql.Scanner interface
+func (ns *NullString) Scan(value interface{}) error {
+	return ns.NullString.Scan(value)
+}
+
+// Value implements the driver.Valuer interface
+func (ns NullString) Value() (driver.Value, error) {
+	return ns.NullString.Value()
+}
 
 type User struct {
 	ID            int       `json:"id"`
@@ -103,7 +146,7 @@ type Job struct {
 	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
 	ActualStart            *time.Time `json:"actual_start,omitempty"`
 	ActualEnd              *time.Time `json:"actual_end,omitempty"`
-	Notes                  string     `json:"notes,omitempty"`
+	Notes                  NullString `json:"notes,omitempty"`
 	CreatedAt              time.Time  `json:"created_at"`
 	UpdatedAt              time.Time  `json:"updated_at"`
 }

@@ -15,6 +15,7 @@ struct LoginView: View {
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showRegistration = false
+    @State private var showPassword = false
     
     var body: some View {
         NavigationView {
@@ -39,11 +40,31 @@ struct LoginView: View {
                         .keyboardType(.emailAddress)
                         .frame(height: 44)
                     
-                    SecureField("Password", text: $password)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled(true)
-                        .frame(height: 44)
+                    HStack {
+                        ZStack(alignment: .leading) {
+                            TextField("Password", text: $password)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled(true)
+                                .foregroundColor(showPassword ? Color.primary : .clear)
+
+                            if !showPassword && !password.isEmpty {
+                                Text(String(repeating: "•", count: password.count))
+                                    .foregroundColor(.black)
+                                    .font(.system(size: 16))
+                                    .allowsHitTesting(false)
+                                    .padding(.leading, 8)
+                            }
+                        }
+
+                        Button(action: {
+                            showPassword.toggle()
+                        }) {
+                            Image(systemName: showPassword ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(height: 44)
                     
                     Button(action: login) {
                         HStack {

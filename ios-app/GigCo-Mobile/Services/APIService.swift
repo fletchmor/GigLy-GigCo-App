@@ -252,13 +252,13 @@ class APIService: ObservableObject {
 
                 guard let data = data else {
                     print("🔴 APIService.getJobs - No data received")
-                    continuation.resume(throwing: APIError.noData)
+                    continuation.resume(throwing: APIError.unexpectedResponse)
                     return
                 }
 
                 guard let httpResponse = response as? HTTPURLResponse else {
                     print("🔴 APIService.getJobs - Invalid HTTP response")
-                    continuation.resume(throwing: APIError.invalidResponse)
+                    continuation.resume(throwing: APIError.unexpectedResponse)
                     return
                 }
 
@@ -324,9 +324,180 @@ class APIService: ObservableObject {
         }
     }
 
+    func getMyJobs(userID: Int, role: String) async throws -> JobsListResponse {
+        print("🔵 APIService.getMyJobs - UserID: \(userID), Role: \(role)")
+        var components = URLComponents(string: "http://192.168.22.233:8080/api/v1/jobs/my-jobs")!
+        components.queryItems = [
+            URLQueryItem(name: "user_id", value: String(userID)),
+            URLQueryItem(name: "role", value: role)
+        ]
+
+        guard let url = components.url else {
+            throw APIError.invalidConfiguration
+        }
+
+        print("🔵 APIService.getMyJobs - URL: \(url.absoluteString)")
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = authToken {
+            print("🔵 APIService.getMyJobs - Using auth token: \(token.prefix(20))...")
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else {
+            print("🔴 APIService.getMyJobs - No auth token available")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.getMyJobs - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.getMyJobs - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.getMyJobs - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONDecoder().decode(JobsListResponse.self, from: data)
+                        print("🟢 APIService.getMyJobs - Success: \(response.jobs.count) jobs")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.getMyJobs - JSON decode error: \(error)")
+                        print("🔴 APIService.getMyJobs - Raw data: \(String(data: data, encoding: .utf8) ?? "nil")")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "No error body"
+                    print("🔴 APIService.getMyJobs - HTTP error: \(httpResponse.statusCode)")
+                    print("🔴 APIService.getMyJobs - Error body: \(errorBody)")
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to get my jobs: \(errorBody)"))
+                }
+            }
+            task.resume()
+        }
+    }
+
+    func getAvailableJobs() async throws -> JobsListResponse {
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/available") else {
+            throw APIError.invalidConfiguration
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.getAvailableJobs - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.getAvailableJobs - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.getAvailableJobs - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONDecoder().decode(JobsListResponse.self, from: data)
+                        print("🟢 APIService.getAvailableJobs - Success: \(response.jobs.count) jobs")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.getAvailableJobs - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    print("🔴 APIService.getAvailableJobs - HTTP error: \(httpResponse.statusCode)")
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to get available jobs"))
+                }
+            }
+            task.resume()
+        }
+    }
+
+    func acceptJob(jobID: Int, gigWorkerID: Int) async throws -> [String: Any] {
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/accept") else {
+            throw APIError.invalidConfiguration
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let requestBody = ["gig_worker_id": gigWorkerID]
+        urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.acceptJob - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.acceptJob - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.acceptJob - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                        print("🟢 APIService.acceptJob - Success")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.acceptJob - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    print("🔴 APIService.acceptJob - HTTP error: \(httpResponse.statusCode)")
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to accept job"))
+                }
+            }
+            task.resume()
+        }
+    }
+
     func createJob(title: String, description: String, category: String, location: String, price: Double, consumerID: Int, scheduledStart: String? = nil) async throws -> JobCreateResponse {
         print("🔵 APIService.createJob - Making direct URLSession request")
         print("🔵 APIService.createJob - Title: \(title), Category: \(category)")
+        print("🔵 APIService.createJob - ConsumerID: \(consumerID)")
 
         // Create URL
         guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/create") else {
@@ -404,6 +575,7 @@ class APIService: ObservableObject {
                         // Don't use convertFromSnakeCase since we're manually mapping keys
                         let jobResponse = try decoder.decode(JobCreateResponse.self, from: data)
                         print("🟢 APIService.createJob - Successfully parsed response: \(jobResponse)")
+                        print("🟢 APIService.createJob - Created job with consumer_id: \(jobResponse.consumerID ?? -1)")
                         continuation.resume(returning: jobResponse)
                     } catch {
                         print("🔴 APIService.createJob - Failed to parse response: \(error)")
@@ -618,6 +790,30 @@ struct GigWorkerCreateResponse: Codable {
 struct JobsListResponse: Codable {
     let jobs: [JobResponse]
     let pagination: Pagination
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        // Handle null jobs array by providing empty array as default
+        if container.contains(.jobs) {
+            if try container.decodeNil(forKey: .jobs) {
+                // Field exists but is null
+                jobs = []
+            } else {
+                // Field exists and has value
+                jobs = try container.decode([JobResponse].self, forKey: .jobs)
+            }
+        } else {
+            // Field doesn't exist
+            jobs = []
+        }
+
+        pagination = try container.decode(Pagination.self, forKey: .pagination)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case jobs, pagination
+    }
 }
 
 struct JobResponse: Codable {

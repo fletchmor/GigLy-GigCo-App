@@ -217,11 +217,17 @@ struct JobDetailView: View {
     // MARK: - Job Actions
     
     private func acceptJob() {
-        guard let jobId = job.id else { return }
-        
+        guard let jobId = job.id,
+              let currentUser = authService.currentUser,
+              let gigWorkerId = currentUser.id else {
+            errorMessage = "Unable to accept job. Please try again."
+            showError = true
+            return
+        }
+
         Task {
             do {
-                try await jobService.acceptJob(jobId)
+                try await jobService.acceptJob(jobId, gigWorkerID: gigWorkerId)
                 await MainActor.run {
                     dismiss()
                 }

@@ -64,13 +64,13 @@ class UserService: ObservableObject {
                 address: address
             )
             print("🟢 Gig worker profile created successfully: \(response)")
+            isLoading = false
             return response
         } catch {
             errorMessage = error.localizedDescription
             print("🔴 Failed to create gig worker profile: \(error)")
+            isLoading = false
             throw error
         }
-
-        isLoading = false
     }
 }

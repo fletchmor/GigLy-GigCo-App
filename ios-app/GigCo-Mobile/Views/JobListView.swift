@@ -63,6 +63,7 @@ struct JobListView: View {
                     List {
                         ForEach(currentJobs) { job in
                             JobRowView(job: job, jobService: jobService)
+                                .environmentObject(authService)
                                 .onTapGesture {
                                     // Navigate to job detail
                                 }
@@ -104,16 +105,21 @@ struct JobListView: View {
     }
     
     private var currentJobs: [Job] {
+        let jobs: [Job]
         switch selectedTab {
         case 0:
-            return jobService.jobs
+            jobs = jobService.jobs
         case 1:
-            return jobService.availableJobs
+            jobs = jobService.availableJobs
         case 2:
-            return jobService.myJobs
+            jobs = jobService.myJobs
         default:
-            return jobService.jobs
+            jobs = jobService.jobs
         }
+
+        print("🔵 JobListView.currentJobs - selectedTab: \(selectedTab), jobs count: \(jobs.count)")
+        print("🔵 JobListView.currentJobs - isLoading: \(jobService.isLoading)")
+        return jobs
     }
     
     private func loadJobs() async {
@@ -128,8 +134,12 @@ struct JobListView: View {
             case 2:
                 if let currentUser = authService.currentUser,
                    let userID = currentUser.id {
-                    try await jobService.getMyJobs(for: userID)
+                    print("🔵 JobListView - Loading My Jobs for user: \(currentUser.name), ID: \(userID), role: \(currentUser.role)")
+                    try await jobService.getMyJobs(for: userID, role: currentUser.role)
                 } else {
+                    print("🔴 JobListView - No current user or user ID found")
+                    print("🔴 JobListView - currentUser: \(authService.currentUser?.name ?? "nil")")
+                    print("🔴 JobListView - currentUser.id: \(authService.currentUser?.id?.description ?? "nil")")
                     try await jobService.getMyJobs()
                 }
             default:
