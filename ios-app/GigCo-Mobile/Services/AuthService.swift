@@ -16,6 +16,9 @@ class AuthService: ObservableObject {
     private let apiService = APIService.shared
     
     init() {
+        // Register this instance with APIService for token expiration handling
+        apiService.setAuthServiceReference(self)
+
         // Check for existing auth token and user data
         if let token = UserDefaults.standard.string(forKey: "auth_token") {
             self.authToken = token

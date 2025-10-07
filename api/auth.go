@@ -415,17 +415,17 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// NOTE: Password verification will be implemented when password field is added to database
-	// For now, we'll just check if user exists and is active
+	// Get user with password hash
 	var user model.User
+	var passwordHash string
 	query := `
-		SELECT id, uuid, name, email, role, is_active, email_verified, phone_verified, created_at
+		SELECT id, uuid, name, email, role, is_active, email_verified, phone_verified, created_at, password_hash
 		FROM people WHERE email = $1 AND is_active = true
 	`
 
 	err = config.DB.QueryRow(query, strings.ToLower(strings.TrimSpace(loginReq.Email))).Scan(
 		&user.ID, &user.Uuid, &user.Name, &user.Email, &user.Role,
-		&user.IsActive, &user.EmailVerified, &user.PhoneVerified, &user.CreatedAt,
+		&user.IsActive, &user.EmailVerified, &user.PhoneVerified, &user.CreatedAt, &passwordHash,
 	)
 
 	if err != nil {
@@ -438,8 +438,18 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// NOTE: Password verification will be implemented when password field is added to database
-	// For now, accept any password for testing
+	// Verify password
+	if passwordHash == "" {
+		// No password set, reject login
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(loginReq.Password))
+	if err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		return
+	}
 
 	// Generate JWT token
 	token, err := auth.GenerateJWT(user.ID, user.Uuid, user.Email, user.Role)

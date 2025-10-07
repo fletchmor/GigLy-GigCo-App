@@ -106,7 +106,7 @@ class JobService: ObservableObject {
 
             // Convert JobResponse to Job model
             self.myJobs = response.jobs.map { jobResponse in
-                Job(
+                let job = Job(
                     id: jobResponse.id,
                     uuid: jobResponse.uuid,
                     title: jobResponse.title,
@@ -121,6 +121,8 @@ class JobService: ObservableObject {
                     updatedAt: jobResponse.updatedAt,
                     scheduledFor: jobResponse.scheduledStart
                 )
+                print("🔵 JobService - Mapped job: \(job.title), ID: \(job.id ?? -1), Creator: \(job.customerId ?? -1), Status: \(job.status ?? "nil")")
+                return job
             }
 
             print("🟢 Successfully converted \(self.myJobs.count) my jobs")
@@ -256,6 +258,25 @@ class JobService: ObservableObject {
         print("🔵 Would cancel job ID: \(jobId)")
         try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
         print("🟢 Job cancellation simulated successfully")
+    }
+
+    func deleteJob(_ jobId: Int) async throws {
+        print("🔵 JobService.deleteJob - Deleting job ID: \(jobId)")
+
+        do {
+            let response = try await apiService.deleteJob(jobID: jobId)
+            print("🟢 Job deletion successful: \(response)")
+
+            // Remove job from all local arrays
+            self.jobs.removeAll { $0.id == jobId }
+            self.myJobs.removeAll { $0.id == jobId }
+            self.availableJobs.removeAll { $0.id == jobId }
+
+            print("🟢 Job removed from local lists")
+        } catch {
+            print("🔴 Failed to delete job: \(error)")
+            throw error
+        }
     }
 }
 

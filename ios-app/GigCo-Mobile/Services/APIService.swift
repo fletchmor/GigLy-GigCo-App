@@ -13,6 +13,9 @@ class APIService: ObservableObject {
     
     @Published var isConfigured = false
     private var authToken: String?
+
+    // Reference to AuthService for handling token expiration
+    private var authServiceRef: AuthService?
     
     private init() {
         configureAPI()
@@ -52,6 +55,17 @@ class APIService: ObservableObject {
         authToken = nil
         UserDefaults.standard.removeObject(forKey: "auth_token")
         GigCoAPIAPI.customHeaders.removeValue(forKey: "Authorization")
+    }
+
+    func setAuthServiceReference(_ authService: AuthService) {
+        self.authServiceRef = authService
+    }
+
+    private func handleUnauthorizedResponse() {
+        print("🔴 APIService - Token expired, logging out user")
+        Task { @MainActor in
+            authServiceRef?.logout()
+        }
     }
     
     // MARK: - Auth Methods
@@ -283,6 +297,12 @@ class APIService: ObservableObject {
                     // Handle error response
                     let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                     print("🔴 APIService.getJobs - Server error: \(errorMessage)")
+
+                    // Handle 401 Unauthorized - token expired
+                    if httpResponse.statusCode == 401 {
+                        self.handleUnauthorizedResponse()
+                    }
+
                     continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, errorMessage))
                 }
             }
@@ -382,6 +402,12 @@ class APIService: ObservableObject {
                     let errorBody = String(data: data, encoding: .utf8) ?? "No error body"
                     print("🔴 APIService.getMyJobs - HTTP error: \(httpResponse.statusCode)")
                     print("🔴 APIService.getMyJobs - Error body: \(errorBody)")
+
+                    // Handle 401 Unauthorized - token expired
+                    if httpResponse.statusCode == 401 {
+                        self.handleUnauthorizedResponse()
+                    }
+
                     continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to get my jobs: \(errorBody)"))
                 }
             }
@@ -597,6 +623,74 @@ class APIService: ObservableObject {
         }
     }
 
+    func deleteJob(jobID: Int) async throws -> [String: Any] {
+        print("🔵 APIService.deleteJob - Making direct URLSession request")
+        print("🔵 APIService.deleteJob - JobID: \(jobID)")
+
+        // Create URL
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)") else {
+            print("🔴 APIService.deleteJob - Invalid URL")
+            throw APIError.invalidConfiguration
+        }
+
+        // Create request
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "DELETE"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Add authorization header if token exists
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.deleteJob - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.deleteJob - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.deleteJob - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                print("🔵 APIService.deleteJob - HTTP Status: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                        print("🟢 APIService.deleteJob - Success")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.deleteJob - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "No error body"
+                    print("🔴 APIService.deleteJob - HTTP error: \(httpResponse.statusCode)")
+                    print("🔴 APIService.deleteJob - Error body: \(errorBody)")
+
+                    // Handle 401 Unauthorized - token expired
+                    if httpResponse.statusCode == 401 {
+                        self.handleUnauthorizedResponse()
+                    }
+
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to delete job: \(errorBody)"))
+                }
+            }
+            task.resume()
+        }
+    }
+
     // MARK: - GigWorker Profile Methods
 
     func createGigWorkerProfile(name: String, email: String, bio: String, hourlyRate: Double, experienceYears: Int, phone: String? = nil, address: String? = nil) async throws -> GigWorkerCreateResponse {
@@ -703,16 +797,57 @@ class APIService: ObservableObject {
     // MARK: - Health Check
     
     func healthCheck() async throws -> [String: AnyCodable] {
+        print("🔵 APIService.healthCheck - Making direct URLSession request")
+
+        // Create URL
+        guard let url = URL(string: "http://192.168.22.233:8080/health") else {
+            print("🔴 APIService.healthCheck - Invalid URL")
+            throw APIError.invalidConfiguration
+        }
+
+        // Create request
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "GET"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
         return try await withCheckedThrowingContinuation { continuation in
-            HealthAPI.healthGet { response, error in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
+                    print("🔴 APIService.healthCheck - Network error: \(error)")
                     continuation.resume(throwing: error)
-                } else if let response = response {
-                    continuation.resume(returning: response)
-                } else {
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.healthCheck - No data received")
                     continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.healthCheck - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                print("🔵 APIService.healthCheck - HTTP Status: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let jsonObject = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                        let result = jsonObject.mapValues { AnyCodable($0) }
+                        print("🟢 APIService.healthCheck - Success")
+                        continuation.resume(returning: result)
+                    } catch {
+                        print("🔴 APIService.healthCheck - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    print("🔴 APIService.healthCheck - HTTP error: \(httpResponse.statusCode)")
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Health check failed"))
                 }
             }
+            task.resume()
         }
     }
 }

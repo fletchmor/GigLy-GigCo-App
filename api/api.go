@@ -1597,6 +1597,139 @@ func CancelJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// DeleteJob godoc
+// @Summary Delete a job
+// @Description Permanently delete a job (only allowed by job creator for posted jobs)
+// @Tags jobs
+// @Accept json
+// @Produce json
+// @Param id path int true "Job ID"
+// @Security BearerAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]string "Invalid request"
+// @Failure 403 {object} map[string]string "Unauthorized"
+// @Failure 404 {object} map[string]string "Job not found"
+// @Failure 409 {object} map[string]string "Cannot delete job in current status"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /jobs/{id} [delete]
+func DeleteJob(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodDelete {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Get user ID from context (set by JWT middleware)
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "User not authenticated", http.StatusUnauthorized)
+		return
+	}
+
+	idParam := chi.URLParam(r, "id")
+	jobID, err := strconv.Atoi(idParam)
+	if err != nil {
+		http.Error(w, "Invalid job ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Check if job exists and get current details
+	var job model.Job
+	var consumerID int
+	query := `
+		SELECT id, consumer_id, status
+		FROM jobs
+		WHERE id = $1
+	`
+	err = config.DB.QueryRow(query, jobID).Scan(&job.ID, &consumerID, &job.Status)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "Job not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("Database error checking job: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Check if user is the job creator
+	if consumerID != userID {
+		http.Error(w, "You can only delete your own jobs", http.StatusForbidden)
+		return
+	}
+
+	// Only allow deletion of posted or cancelled jobs
+	if job.Status != "posted" && job.Status != "cancelled" {
+		http.Error(w, "Cannot delete job that is in progress or completed", http.StatusConflict)
+		return
+	}
+
+	// Begin transaction to ensure data consistency
+	tx, err := config.DB.Begin()
+	if err != nil {
+		log.Printf("Failed to begin transaction: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	defer tx.Rollback()
+
+	// Delete related records first (foreign key constraints)
+	// Delete job reviews
+	_, err = tx.Exec("DELETE FROM job_reviews WHERE job_id = $1", jobID)
+	if err != nil {
+		log.Printf("Failed to delete job reviews: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete transactions
+	_, err = tx.Exec("DELETE FROM transactions WHERE job_id = $1", jobID)
+	if err != nil {
+		log.Printf("Failed to delete transactions: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	// Delete schedule entries
+	_, err = tx.Exec("DELETE FROM schedules WHERE job_id = $1", jobID)
+	if err != nil {
+		log.Printf("Failed to delete schedules: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	// Finally delete the job itself
+	deleteQuery := "DELETE FROM jobs WHERE id = $1"
+	result, err := tx.Exec(deleteQuery, jobID)
+	if err != nil {
+		log.Printf("Database error deleting job: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil || rowsAffected == 0 {
+		log.Printf("No rows affected when deleting job: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		log.Printf("Failed to commit transaction: %v", err)
+		http.Error(w, "Failed to delete job", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Job %d deleted successfully by user %d", jobID, userID)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"message": "Job deleted successfully",
+	})
+}
+
 // SendJobOffer sends a job offer to a specific gig worker
 func SendJobOffer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {

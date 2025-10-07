@@ -14,6 +14,8 @@ struct JobRowView: View {
     @State private var isAccepting = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showDeleteConfirmation = false
+    @State private var isDeleting = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -76,32 +78,75 @@ struct JobRowView: View {
                 }
             }
 
-            // Add Accept Job button for workers viewing available jobs
-            if shouldShowAcceptButton {
+            // Action buttons
+            if shouldShowAcceptButton || shouldShowDeleteButton {
                 HStack {
                     Spacer()
-                    Button(action: acceptJob) {
-                        HStack {
-                            if isAccepting {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(0.8)
-                                Text("Accepting...")
-                            } else {
-                                Text("Accept Job")
+
+                    // Add Accept Job button for workers viewing available jobs
+                    if shouldShowAcceptButton {
+                        Button(action: acceptJob) {
+                            HStack {
+                                if isAccepting {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                    Text("Accepting...")
+                                } else {
+                                    Text("Accept Job")
+                                }
                             }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.blue)
+                            .cornerRadius(8)
                         }
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 8)
-                        .background(Color.blue)
-                        .cornerRadius(8)
+                        .disabled(isAccepting)
                     }
-                    .disabled(isAccepting)
+
+                    // Add spacing between buttons if both are showing
+                    if shouldShowAcceptButton && shouldShowDeleteButton {
+                        Spacer().frame(width: 8)
+                    }
+
+                    // Add Delete Job button for job creators
+                    if shouldShowDeleteButton {
+                        Button(action: {
+                            print("🔵 JobRowView - Delete button tapped for job: \(job.title)")
+                            showDeleteConfirmation = true
+                        }) {
+                            HStack(spacing: 4) {
+                                if isDeleting {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .scaleEffect(0.8)
+                                    Text("Deleting...")
+                                } else {
+                                    Image(systemName: "trash")
+                                    Text("Delete")
+                                }
+                            }
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .background(Color.red)
+                            .cornerRadius(8)
+                        }
+                        .disabled(isDeleting)
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle()) // Make entire button area tappable
+                        .onTapGesture {
+                            print("🟡 JobRowView - Alternative tap gesture triggered")
+                            showDeleteConfirmation = true
+                        }
+                    }
                 }
-                .padding(.top, 4)
+                .padding(.top, 8)
             }
         }
         .padding(.vertical, 4)
@@ -109,6 +154,17 @@ struct JobRowView: View {
             Button("OK") { }
         } message: {
             Text(errorMessage)
+        }
+        .confirmationDialog("Delete Job", isPresented: $showDeleteConfirmation) {
+            Button("Delete", role: .destructive) {
+                print("🔵 JobRowView - Delete confirmed, calling deleteJob()")
+                deleteJob()
+            }
+            Button("Cancel", role: .cancel) {
+                print("🔵 JobRowView - Delete cancelled")
+            }
+        } message: {
+            Text("Are you sure you want to permanently delete this job? This action cannot be undone.")
         }
     }
 
@@ -124,6 +180,29 @@ struct JobRowView: View {
               job.gigworkerId == nil else {
             return false
         }
+        return true
+    }
+
+    private var shouldShowDeleteButton: Bool {
+        // Show delete button if:
+        // 1. Current user is the job creator (consumer)
+        // 2. Job status is "posted" or "cancelled" (not in progress or completed)
+
+        print("🔵 JobRowView.shouldShowDeleteButton - Checking delete button visibility")
+        print("🔵 JobRowView - Current user: \(authService.currentUser?.name ?? "nil"), ID: \(authService.currentUser?.id ?? -1)")
+        print("🔵 JobRowView - Job: \(job.title), Creator ID: \(job.customerId ?? -1), Status: \(job.status ?? "nil")")
+
+        guard let currentUser = authService.currentUser,
+              let currentUserId = currentUser.id,
+              let jobCreatorId = job.customerId,
+              currentUserId == jobCreatorId,
+              let status = job.status,
+              (status == "posted" || status == "cancelled") else {
+            print("🔴 JobRowView - Delete button NOT shown")
+            return false
+        }
+
+        print("🟢 JobRowView - Delete button SHOULD be shown")
         return true
     }
 
@@ -154,7 +233,40 @@ struct JobRowView: View {
             }
         }
     }
-    
+
+    private func deleteJob() {
+        print("🔵 JobRowView.deleteJob - Starting delete process")
+
+        guard let jobId = job.id else {
+            print("🔴 JobRowView.deleteJob - No job ID found")
+            errorMessage = "Unable to delete job. Please try again."
+            showError = true
+            return
+        }
+
+        print("🔵 JobRowView.deleteJob - Deleting job with ID: \(jobId)")
+        isDeleting = true
+
+        Task {
+            do {
+                print("🔵 JobRowView.deleteJob - Calling jobService.deleteJob")
+                try await jobService.deleteJob(jobId)
+                await MainActor.run {
+                    print("🟢 JobRowView.deleteJob - Delete successful")
+                    isDeleting = false
+                }
+                // Job will be removed from the lists automatically in JobService
+            } catch {
+                await MainActor.run {
+                    print("🔴 JobRowView.deleteJob - Delete failed: \(error)")
+                    isDeleting = false
+                    errorMessage = error.localizedDescription
+                    showError = true
+                }
+            }
+        }
+    }
+
     private func statusColor(for status: String) -> Color {
         switch status.lowercased() {
         case "open", "available":

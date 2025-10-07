@@ -43,7 +43,8 @@ struct HomeTabView: View {
     @StateObject private var jobService = JobService()
     @State private var showingJobList = false
     @State private var showingCreateJob = false
-    @State private var recentJobsCount = 0
+    @State private var activeJobsCount = 0
+    @State private var completedJobsCount = 0
     @State private var apiHealthy = false
     @State private var healthCheckMessage = "Checking API..."
     
@@ -143,19 +144,35 @@ struct HomeTabView: View {
                             .padding(.horizontal)
                         
                         HStack(spacing: 16) {
-                            StatCard(
-                                title: "Active Jobs",
-                                value: "\(recentJobsCount)",
-                                icon: "briefcase",
-                                color: .blue
-                            )
-                            
-                            StatCard(
-                                title: "Completed",
-                                value: "0",
-                                icon: "checkmark.circle",
-                                color: .green
-                            )
+                            if authService.currentUser?.role == "consumer" {
+                                StatCard(
+                                    title: "My Active Jobs",
+                                    value: "\(activeJobsCount)",
+                                    icon: "briefcase",
+                                    color: .blue
+                                )
+
+                                StatCard(
+                                    title: "Completed Jobs",
+                                    value: "\(completedJobsCount)",
+                                    icon: "checkmark.circle",
+                                    color: .green
+                                )
+                            } else {
+                                StatCard(
+                                    title: "Jobs Accepted",
+                                    value: "\(activeJobsCount)",
+                                    icon: "briefcase",
+                                    color: .blue
+                                )
+
+                                StatCard(
+                                    title: "Jobs Completed",
+                                    value: "\(completedJobsCount)",
+                                    icon: "checkmark.circle",
+                                    color: .green
+                                )
+                            }
                         }
                         .padding(.horizontal)
                     }
@@ -191,6 +208,12 @@ struct HomeTabView: View {
             .task {
                 await loadDashboardData()
             }
+            .onAppear {
+                // Refresh stats when returning to home tab
+                Task {
+                    await loadDashboardData()
+                }
+            }
         }
     }
     
@@ -209,14 +232,42 @@ struct HomeTabView: View {
             }
         }
         
-        // Load job data
-        do {
-            try await jobService.getMyJobs()
-            await MainActor.run {
-                recentJobsCount = jobService.myJobs.count
+        // Load job data for current user
+        if let currentUser = authService.currentUser,
+           let userID = currentUser.id {
+            do {
+                print("🔵 DashboardView - Loading jobs for user: \(currentUser.name), ID: \(userID), role: \(currentUser.role)")
+                try await jobService.getMyJobs(for: userID, role: currentUser.role)
+
+                await MainActor.run {
+                    // Calculate active jobs (posted, accepted, in_progress)
+                    let activeStatuses = ["posted", "accepted", "in_progress"]
+                    activeJobsCount = jobService.myJobs.filter { job in
+                        guard let status = job.status else { return false }
+                        return activeStatuses.contains(status.lowercased())
+                    }.count
+
+                    // Calculate completed jobs
+                    completedJobsCount = jobService.myJobs.filter { job in
+                        guard let status = job.status else { return false }
+                        return status.lowercased() == "completed"
+                    }.count
+
+                    print("🟢 DashboardView - Stats updated: Active: \(activeJobsCount), Completed: \(completedJobsCount)")
+                }
+            } catch {
+                print("🔴 DashboardView - Failed to load job stats: \(error)")
+                await MainActor.run {
+                    activeJobsCount = 0
+                    completedJobsCount = 0
+                }
             }
-        } catch {
-            // Handle error silently for dashboard
+        } else {
+            print("🔴 DashboardView - No current user found for loading job stats")
+            await MainActor.run {
+                activeJobsCount = 0
+                completedJobsCount = 0
+            }
         }
     }
 }

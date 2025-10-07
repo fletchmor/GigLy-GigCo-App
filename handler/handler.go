@@ -110,7 +110,8 @@ func DeleteHandlers(r chi.Router) {
 	r.With(middleware.RequireRole("admin")).Delete("/api/v1/gigworkers/{id}", api.DeactivateGigWorker)
 
 	// Job Management
-	r.With(middleware.RequireRoles("admin", "consumer")).Delete("/api/v1/jobs/{id}", api.CancelJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Delete("/api/v1/jobs/{id}/cancel", api.CancelJob)
+	r.With(middleware.RequireRoles("admin", "consumer")).Delete("/api/v1/jobs/{id}", api.DeleteJob)
 
 	// Review Management
 	r.With(middleware.RequireRoles("admin", "consumer", "gig_worker")).Delete("/api/v1/reviews/{id}", api.DeleteReview)
