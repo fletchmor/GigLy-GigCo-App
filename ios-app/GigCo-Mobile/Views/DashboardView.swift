@@ -47,6 +47,7 @@ struct HomeTabView: View {
     @State private var completedJobsCount = 0
     @State private var apiHealthy = false
     @State private var healthCheckMessage = "Checking API..."
+    @State private var refreshID = UUID() // Add refresh trigger
     
     var body: some View {
         NavigationView {
@@ -205,13 +206,13 @@ struct HomeTabView: View {
                 CreateJobView()
                     .environmentObject(authService)
             }
-            .task {
+            .task(id: refreshID) {
                 await loadDashboardData()
             }
-            .onAppear {
-                // Refresh stats when returning to home tab
+            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("RefreshDashboard"))) { _ in
+                // Refresh when a job is deleted or created
                 Task {
-                    await loadDashboardData()
+                    refreshID = UUID()
                 }
             }
         }

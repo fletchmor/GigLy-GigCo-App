@@ -37,7 +37,7 @@ class JobService: ObservableObject {
                     price: jobResponse.totalPay,
                     status: jobResponse.status,
                     customerId: jobResponse.consumerID,
-                    gigworkerId: nil, // Not included in list response
+                    gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
                     scheduledFor: jobResponse.scheduledStart
@@ -73,7 +73,7 @@ class JobService: ObservableObject {
                     price: jobResponse.totalPay,
                     status: jobResponse.status,
                     customerId: jobResponse.consumerID,
-                    gigworkerId: nil, // Will be set when job is accepted
+                    gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
                     scheduledFor: jobResponse.scheduledStart
@@ -116,7 +116,7 @@ class JobService: ObservableObject {
                     price: jobResponse.totalPay,
                     status: jobResponse.status,
                     customerId: jobResponse.consumerID,
-                    gigworkerId: nil, // Will be set when job is accepted
+                    gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
                     scheduledFor: jobResponse.scheduledStart
@@ -195,6 +195,9 @@ class JobService: ObservableObject {
         self.myJobs.append(newJob)
         print("🟢 JobService.createJob - Added to myJobs. Total myJobs: \(self.myJobs.count)")
 
+        // Notify dashboard to refresh
+        NotificationCenter.default.post(name: NSNotification.Name("RefreshDashboard"), object: nil)
+
         return response
     }
     
@@ -232,6 +235,9 @@ class JobService: ObservableObject {
                 if let mainJobIndex = jobs.firstIndex(where: { $0.id == jobId }) {
                     jobs[mainJobIndex] = updatedJob
                 }
+
+                // Notify dashboard to refresh
+                NotificationCenter.default.post(name: NSNotification.Name("RefreshDashboard"), object: nil)
             }
         } catch {
             print("🔴 Failed to accept job: \(error)")
@@ -273,6 +279,9 @@ class JobService: ObservableObject {
             self.availableJobs.removeAll { $0.id == jobId }
 
             print("🟢 Job removed from local lists")
+
+            // Notify dashboard to refresh
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshDashboard"), object: nil)
         } catch {
             print("🔴 Failed to delete job: \(error)")
             throw error
@@ -296,14 +305,51 @@ struct Job: Codable, Identifiable {
     let createdAt: String?
     let updatedAt: String?
     let scheduledFor: String?
-    
+
     enum CodingKeys: String, CodingKey {
         case id, uuid, title, description, category, location, price, status
-        case customerId = "customer_id"
-        case gigworkerId = "gigworker_id"
+        case customerId = "consumer_id"
+        case gigworkerId = "gig_worker_id"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
-        case scheduledFor = "scheduled_for"
+        case scheduledFor = "scheduled_start"
+    }
+
+    // Memberwise initializer for programmatic creation
+    init(id: Int?, uuid: String?, title: String, description: String, category: String?, location: String?, price: Double?, status: String?, customerId: Int?, gigworkerId: Int?, createdAt: String?, updatedAt: String?, scheduledFor: String?) {
+        self.id = id
+        self.uuid = uuid
+        self.title = title
+        self.description = description
+        self.category = category
+        self.location = location
+        self.price = price
+        self.status = status
+        self.customerId = customerId
+        self.gigworkerId = gigworkerId
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.scheduledFor = scheduledFor
+    }
+
+    // Decoder initializer for JSON decoding
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(Int.self, forKey: .id)
+        uuid = try container.decodeIfPresent(String.self, forKey: .uuid)
+        title = try container.decode(String.self, forKey: .title)
+        description = try container.decode(String.self, forKey: .description)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        location = try container.decodeIfPresent(String.self, forKey: .location)
+        price = try container.decodeIfPresent(Double.self, forKey: .price)
+        status = try container.decodeIfPresent(String.self, forKey: .status)
+        customerId = try container.decodeIfPresent(Int.self, forKey: .customerId)
+        gigworkerId = try container.decodeIfPresent(Int.self, forKey: .gigworkerId)
+        createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
+        updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
+        scheduledFor = try container.decodeIfPresent(String.self, forKey: .scheduledFor)
+
+        print("🔵 Job decoded - title: \(title), status: \(status ?? "nil"), gigworkerId: \(gigworkerId?.description ?? "nil")")
     }
 }
 

@@ -173,13 +173,21 @@ struct JobRowView: View {
         // 1. Current user is a gig worker
         // 2. Job status is "posted" or "available"
         // 3. Job is not already assigned to someone
+
+        print("🔵 JobRowView.shouldShowAcceptButton - Checking accept button visibility")
+        print("🔵 JobRowView - Current user: \(authService.currentUser?.name ?? "nil"), Role: \(authService.currentUser?.role ?? "nil")")
+        print("🔵 JobRowView - Job: \(job.title), Status: \(job.status ?? "nil"), gigworkerId: \(job.gigworkerId?.description ?? "nil")")
+
         guard let currentUser = authService.currentUser,
               currentUser.role == "gig_worker",
               let status = job.status,
               (status == "posted" || status == "available"),
               job.gigworkerId == nil else {
+            print("🔴 JobRowView - Accept button NOT shown")
             return false
         }
+
+        print("🟢 JobRowView - Accept button SHOULD be shown")
         return true
     }
 
@@ -207,25 +215,38 @@ struct JobRowView: View {
     }
 
     private func acceptJob() {
+        print("🔵 JobRowView.acceptJob - Button tapped!")
+        print("🔵 JobRowView.acceptJob - Current user: \(authService.currentUser?.name ?? "nil")")
+        print("🔵 JobRowView.acceptJob - Job ID: \(job.id?.description ?? "nil")")
+        print("🔵 JobRowView.acceptJob - User ID: \(authService.currentUser?.id?.description ?? "nil")")
+
         guard let currentUser = authService.currentUser,
               let jobId = job.id,
               let gigWorkerId = currentUser.id else {
+            print("🔴 JobRowView.acceptJob - Missing required data")
+            print("🔴 JobRowView.acceptJob - currentUser: \(authService.currentUser != nil)")
+            print("🔴 JobRowView.acceptJob - jobId: \(job.id != nil)")
+            print("🔴 JobRowView.acceptJob - gigWorkerId: \(authService.currentUser?.id != nil)")
             errorMessage = "Unable to accept job. Please try again."
             showError = true
             return
         }
 
+        print("🔵 JobRowView.acceptJob - Starting acceptance for job \(jobId) by worker \(gigWorkerId)")
         isAccepting = true
 
         Task {
             do {
+                print("🔵 JobRowView.acceptJob - Calling jobService.acceptJob")
                 try await jobService.acceptJob(jobId, gigWorkerID: gigWorkerId)
                 await MainActor.run {
+                    print("🟢 JobRowView.acceptJob - Success!")
                     isAccepting = false
                 }
                 // Job will be updated in the service automatically
             } catch {
                 await MainActor.run {
+                    print("🔴 JobRowView.acceptJob - Error: \(error)")
                     isAccepting = false
                     errorMessage = error.localizedDescription
                     showError = true
@@ -269,9 +290,11 @@ struct JobRowView: View {
 
     private func statusColor(for status: String) -> Color {
         switch status.lowercased() {
-        case "open", "available":
+        case "posted":
             return .blue
-        case "in_progress", "accepted":
+        case "accepted":
+            return .cyan
+        case "in_progress":
             return .orange
         case "completed":
             return .green

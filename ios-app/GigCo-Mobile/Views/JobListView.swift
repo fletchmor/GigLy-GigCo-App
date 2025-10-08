@@ -64,9 +64,6 @@ struct JobListView: View {
                         ForEach(currentJobs) { job in
                             JobRowView(job: job, jobService: jobService)
                                 .environmentObject(authService)
-                                .onTapGesture {
-                                    // Navigate to job detail
-                                }
                         }
                     }
                     .refreshable {

@@ -467,9 +467,15 @@ class APIService: ObservableObject {
     }
 
     func acceptJob(jobID: Int, gigWorkerID: Int) async throws -> [String: Any] {
+        print("🔵 APIService.acceptJob - JobID: \(jobID), GigWorkerID: \(gigWorkerID)")
+        print("🔵 APIService.acceptJob - Auth token: \(authToken != nil ? "Present" : "Missing")")
+
         guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/accept") else {
+            print("🔴 APIService.acceptJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
+
+        print("🔵 APIService.acceptJob - URL: \(url.absoluteString)")
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = "POST"
@@ -955,6 +961,7 @@ struct JobResponse: Codable {
     let id: Int
     let uuid: String
     let consumerID: Int
+    let gigWorkerID: Int?
     let title: String
     let description: String
     let category: String?
@@ -969,6 +976,7 @@ struct JobResponse: Codable {
     enum CodingKeys: String, CodingKey {
         case id, uuid, title, description, category, status
         case consumerID = "consumer_id"
+        case gigWorkerID = "gig_worker_id"
         case locationAddress = "location_address"
         case totalPay = "total_pay"
         case scheduledStart = "scheduled_start"

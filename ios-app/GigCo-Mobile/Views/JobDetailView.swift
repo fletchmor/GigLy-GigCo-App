@@ -169,12 +169,14 @@ struct JobDetailView: View {
     
     private var statusColor: Color {
         switch job.status?.lowercased() {
-        case "open":
+        case "posted":
             return .green
+        case "accepted":
+            return .blue
         case "in_progress":
             return .orange
         case "completed":
-            return .blue
+            return .purple
         case "cancelled":
             return .red
         default:
@@ -183,7 +185,7 @@ struct JobDetailView: View {
     }
     
     private var canAcceptJob: Bool {
-        job.status == "open" && authService.currentUser?.role == "gig_worker"
+        job.status == "posted" && authService.currentUser?.role == "gig_worker"
     }
     
     private var canStartJob: Bool {
@@ -196,7 +198,7 @@ struct JobDetailView: View {
     
     
     private var canCancelJob: Bool {
-        (job.status == "open" || job.status == "accepted") && 
+        (job.status == "posted" || job.status == "accepted") &&
         authService.currentUser?.role == "consumer"
     }
     
