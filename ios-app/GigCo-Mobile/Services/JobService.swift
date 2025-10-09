@@ -40,7 +40,9 @@ class JobService: ObservableObject {
                     gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
-                    scheduledFor: jobResponse.scheduledStart
+                    scheduledFor: jobResponse.scheduledStart,
+                    consumerName: jobResponse.consumer.name,
+                    workerName: jobResponse.gigWorker?.name
                 )
             }
 
@@ -76,7 +78,9 @@ class JobService: ObservableObject {
                     gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
-                    scheduledFor: jobResponse.scheduledStart
+                    scheduledFor: jobResponse.scheduledStart,
+                    consumerName: jobResponse.consumer.name,
+                    workerName: jobResponse.gigWorker?.name
                 )
             }
 
@@ -119,9 +123,11 @@ class JobService: ObservableObject {
                     gigworkerId: jobResponse.gigWorkerID,
                     createdAt: jobResponse.createdAt,
                     updatedAt: jobResponse.updatedAt,
-                    scheduledFor: jobResponse.scheduledStart
+                    scheduledFor: jobResponse.scheduledStart,
+                    consumerName: jobResponse.consumer.name,
+                    workerName: jobResponse.gigWorker?.name
                 )
-                print("🔵 JobService - Mapped job: \(job.title), ID: \(job.id ?? -1), Creator: \(job.customerId ?? -1), Status: \(job.status ?? "nil")")
+                print("🔵 JobService - Mapped job: \(job.title), ID: \(job.id ?? -1), Creator: \(job.customerId ?? -1), Consumer: \(job.consumerName ?? "nil"), Status: \(job.status ?? "nil")")
                 return job
             }
 
@@ -246,17 +252,95 @@ class JobService: ObservableObject {
     }
     
     func startJob(_ jobId: Int) async throws {
-        // TODO: Implement job start when API endpoint is available
-        print("🔵 Would start job ID: \(jobId)")
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-        print("🟢 Job start simulated successfully")
+        print("🔵 JobService.startJob - Starting job ID: \(jobId)")
+
+        do {
+            let response = try await apiService.startJob(jobID: jobId)
+            print("🟢 JobService.startJob - Job started successfully: \(response)")
+
+            // Update local job status
+            if let jobIndex = myJobs.firstIndex(where: { $0.id == jobId }) {
+                var updatedJob = myJobs[jobIndex]
+                updatedJob = Job(
+                    id: updatedJob.id,
+                    uuid: updatedJob.uuid,
+                    title: updatedJob.title,
+                    description: updatedJob.description,
+                    category: updatedJob.category,
+                    location: updatedJob.location,
+                    price: updatedJob.price,
+                    status: "in_progress",
+                    customerId: updatedJob.customerId,
+                    gigworkerId: updatedJob.gigworkerId,
+                    createdAt: updatedJob.createdAt,
+                    updatedAt: updatedJob.updatedAt,
+                    scheduledFor: updatedJob.scheduledFor
+                )
+                myJobs[jobIndex] = updatedJob
+
+                // Also update in main jobs list
+                if let mainJobIndex = jobs.firstIndex(where: { $0.id == jobId }) {
+                    jobs[mainJobIndex] = updatedJob
+                }
+            }
+
+            // Notify dashboard to refresh
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshDashboard"), object: nil)
+        } catch {
+            print("🔴 JobService.startJob - Failed: \(error)")
+            throw error
+        }
     }
-    
+
     func completeJob(_ jobId: Int) async throws {
-        // TODO: Implement job completion when API endpoint is available
-        print("🔵 Would complete job ID: \(jobId)")
-        try await Task.sleep(nanoseconds: 500_000_000) // 0.5 second delay
-        print("🟢 Job completion simulated successfully")
+        print("🔵 JobService.completeJob - Completing job ID: \(jobId)")
+
+        do {
+            let response = try await apiService.completeJob(jobID: jobId)
+            print("🟢 JobService.completeJob - Job completion confirmed: \(response)")
+
+            let fullyCompleted = response["fully_completed"] as? Bool ?? false
+            let newStatus = fullyCompleted ? "completed" : "in_progress"
+
+            // Update local job status
+            if let jobIndex = myJobs.firstIndex(where: { $0.id == jobId }) {
+                var updatedJob = myJobs[jobIndex]
+                updatedJob = Job(
+                    id: updatedJob.id,
+                    uuid: updatedJob.uuid,
+                    title: updatedJob.title,
+                    description: updatedJob.description,
+                    category: updatedJob.category,
+                    location: updatedJob.location,
+                    price: updatedJob.price,
+                    status: newStatus,
+                    customerId: updatedJob.customerId,
+                    gigworkerId: updatedJob.gigworkerId,
+                    createdAt: updatedJob.createdAt,
+                    updatedAt: updatedJob.updatedAt,
+                    scheduledFor: updatedJob.scheduledFor
+                )
+                myJobs[jobIndex] = updatedJob
+
+                // Also update in main jobs list
+                if let mainJobIndex = jobs.firstIndex(where: { $0.id == jobId }) {
+                    jobs[mainJobIndex] = updatedJob
+                }
+            }
+
+            // Notify dashboard to refresh
+            NotificationCenter.default.post(name: NSNotification.Name("RefreshDashboard"), object: nil)
+
+            // Show appropriate message based on response
+            if fullyCompleted {
+                print("✅ Job fully completed by both parties")
+            } else {
+                print("⏳ Waiting for other party to confirm completion")
+            }
+        } catch {
+            print("🔴 JobService.completeJob - Failed: \(error)")
+            throw error
+        }
     }
     
     func cancelJob(_ jobId: Int) async throws {
@@ -305,6 +389,8 @@ struct Job: Codable, Identifiable {
     let createdAt: String?
     let updatedAt: String?
     let scheduledFor: String?
+    let consumerName: String?
+    let workerName: String?
 
     enum CodingKeys: String, CodingKey {
         case id, uuid, title, description, category, location, price, status
@@ -313,10 +399,12 @@ struct Job: Codable, Identifiable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case scheduledFor = "scheduled_start"
+        case consumerName = "consumer_name"
+        case workerName = "worker_name"
     }
 
     // Memberwise initializer for programmatic creation
-    init(id: Int?, uuid: String?, title: String, description: String, category: String?, location: String?, price: Double?, status: String?, customerId: Int?, gigworkerId: Int?, createdAt: String?, updatedAt: String?, scheduledFor: String?) {
+    init(id: Int?, uuid: String?, title: String, description: String, category: String?, location: String?, price: Double?, status: String?, customerId: Int?, gigworkerId: Int?, createdAt: String?, updatedAt: String?, scheduledFor: String?, consumerName: String? = nil, workerName: String? = nil) {
         self.id = id
         self.uuid = uuid
         self.title = title
@@ -330,6 +418,8 @@ struct Job: Codable, Identifiable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.scheduledFor = scheduledFor
+        self.consumerName = consumerName
+        self.workerName = workerName
     }
 
     // Decoder initializer for JSON decoding
@@ -348,8 +438,10 @@ struct Job: Codable, Identifiable {
         createdAt = try container.decodeIfPresent(String.self, forKey: .createdAt)
         updatedAt = try container.decodeIfPresent(String.self, forKey: .updatedAt)
         scheduledFor = try container.decodeIfPresent(String.self, forKey: .scheduledFor)
+        consumerName = try container.decodeIfPresent(String.self, forKey: .consumerName)
+        workerName = try container.decodeIfPresent(String.self, forKey: .workerName)
 
-        print("🔵 Job decoded - title: \(title), status: \(status ?? "nil"), gigworkerId: \(gigworkerId?.description ?? "nil")")
+        print("🔵 Job decoded - title: \(title), status: \(status ?? "nil"), gigworkerId: \(gigworkerId?.description ?? "nil"), consumerName: \(consumerName ?? "nil")")
     }
 }
 

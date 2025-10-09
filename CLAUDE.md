@@ -49,6 +49,11 @@ app/
 │       ├── activities/   # Temporal activities
 │       ├── workflows/    # Temporal workflows
 │       └── client.go     # Temporal client setup
+├── ios-app/              # iOS Mobile Application
+│   └── GigCo-Mobile/
+│       ├── Views/        # SwiftUI views
+│       ├── Services/     # API and business logic services
+│       └── Models/       # Data models
 ├── scripts/              # Database scripts
 │   ├── init.sql         # Complete database schema
 │   └── *.sql            # Additional migration scripts
@@ -64,12 +69,28 @@ app/
 - **Role system**: consumer, gig_worker, admin (stored as enums)
 - **UUID support**: Most tables have UUID fields for external references
 - **Temporal columns**: created_at/updated_at with automatic triggers
+- **Job completion tracking**:
+  - `worker_completed_at` - Timestamp when worker marks job complete
+  - `consumer_completed_at` - Timestamp when consumer confirms completion
+  - Job is fully completed only when both parties confirm
+- **Job status enum**: posted, offer_sent, accepted, rejected, worker_assigned, scheduled, in_progress, completed, paid, review_pending, closed, cancelled, no_worker_available, payment_failed
+- **Temporal workflow tracking**: temporal_workflow_id, temporal_run_id, workflow_started_at, workflow_completed_at columns in jobs table
 
 ### API Endpoints
 - All endpoints prefixed with `/api/v1/`
 - Health check available at `/health`
 - Comprehensive CRUD operations for all major entities
 - Input validation and error handling implemented
+- **Job Workflow Endpoints**:
+  - `POST /api/v1/jobs/{id}/start` - Start a job (changes status to in_progress)
+  - `POST /api/v1/jobs/{id}/complete` - Mark job as complete (dual confirmation system)
+  - `POST /api/v1/jobs/{id}/accept` - Accept a job as a gig worker
+  - `POST /api/v1/jobs/{id}/reject` - Reject a job offer
+- **Job Query Endpoints**:
+  - `GET /api/v1/jobs` - Get all jobs (with filters)
+  - `GET /api/v1/jobs/available` - Get available jobs for workers (status=posted)
+  - `GET /api/v1/jobs/user/{user_id}` - Get jobs for specific user (role-aware)
+  - All job responses include consumer and gig_worker user summaries with names
 
 ### Temporal Workflows
 - Job acceptance triggers workflows
@@ -89,6 +110,28 @@ app/
 - Server: PORT
 - All configured in docker-compose.yml
 
+### iOS Mobile App
+- **Technology**: SwiftUI, iOS 15+
+- **Architecture**: MVVM pattern with ObservableObjects
+- **API Communication**: Direct URLSession calls to backend API
+- **Key Features**:
+  - User authentication (login/register)
+  - Job browsing and filtering
+  - Job acceptance and workflow management (start, complete)
+  - Dual completion confirmation system
+  - Real-time job status updates
+  - Profile management
+- **Main Views**:
+  - `DashboardView` - Home screen with quick stats and actions
+  - `JobListView` - Browse jobs with tabs (All/Available/My Jobs)
+  - `JobDetailView` - Detailed job view with action buttons
+  - `CreateJobView` - Post new jobs (consumers only)
+- **Services**:
+  - `APIService` - Handles all HTTP requests to backend
+  - `AuthService` - Manages user authentication state
+  - `JobService` - Manages job data and local state
+- **API Base URL**: http://192.168.22.233:8080/api/v1 (configured in APIService)
+
 ### GigCo-Specific Guidelines
 - When working with database, always check if services are running: `docker compose ps`
 - Use `PGPASSWORD=bamboo psql -h localhost -p 5433 -U postgres -d gigco` for direct DB access
@@ -96,3 +139,26 @@ app/
 - When adding new endpoints, follow the existing pattern in `api/` directory
 - All new database tables should include uuid, created_at, updated_at columns
 - Temporal workflows are preferred for any multi-step job processing
+
+### Test User Credentials
+- **Worker Account**: worker1@gigco.dev / password123
+- **Consumer Account**: testconsumer@gigco.dev / password123
+- **Consumer Account**: consumer1@gigco.dev (Alice Johnson) / test123
+
+### Job Workflow States
+1. **posted** - Job created by consumer, available for workers
+2. **accepted** - Worker has accepted the job
+3. **in_progress** - Job has been started by worker
+4. **completed** - Both parties have confirmed completion
+   - Workers can complete from "accepted" or "in_progress" status
+   - Consumers can confirm from "in_progress" or "completed" status
+   - Auto-starts job if worker completes from "accepted" status
+
+### Recent Changes (2025-10-09)
+- ✅ Fixed iOS navigation - Jobs are now tappable to view details
+- ✅ Added dual completion system - Both worker and consumer must confirm
+- ✅ Added username display - Shows who posted each job
+- ✅ Updated job models to include consumer_name and worker_name fields
+- ✅ Fixed authentication to handle NULL password fields
+- ✅ Expanded job_status enum to include all workflow states
+- ✅ Added temporal tracking columns to jobs table

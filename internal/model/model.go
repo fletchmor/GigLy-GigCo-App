@@ -146,6 +146,8 @@ type Job struct {
 	ScheduledEnd           *time.Time `json:"scheduled_end,omitempty"`
 	ActualStart            *time.Time `json:"actual_start,omitempty"`
 	ActualEnd              *time.Time `json:"actual_end,omitempty"`
+	WorkerCompletedAt      *time.Time `json:"worker_completed_at,omitempty"`
+	ConsumerCompletedAt    *time.Time `json:"consumer_completed_at,omitempty"`
 	Notes                  NullString `json:"notes,omitempty"`
 	CreatedAt              time.Time  `json:"created_at"`
 	UpdatedAt              time.Time  `json:"updated_at"`

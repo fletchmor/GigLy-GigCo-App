@@ -417,7 +417,7 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 
 	// Get user with password hash
 	var user model.User
-	var passwordHash string
+	var passwordHash sql.NullString
 	query := `
 		SELECT id, uuid, name, email, role, is_active, email_verified, phone_verified, created_at, password_hash
 		FROM people WHERE email = $1 AND is_active = true
@@ -439,13 +439,13 @@ func LoginUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Verify password
-	if passwordHash == "" {
+	if !passwordHash.Valid || passwordHash.String == "" {
 		// No password set, reject login
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(loginReq.Password))
+	err = bcrypt.CompareHashAndPassword([]byte(passwordHash.String), []byte(loginReq.Password))
 	if err != nil {
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return

@@ -62,8 +62,11 @@ struct JobListView: View {
                 } else {
                     List {
                         ForEach(currentJobs) { job in
-                            JobRowView(job: job, jobService: jobService)
-                                .environmentObject(authService)
+                            NavigationLink(destination: JobDetailView(job: job)
+                                .environmentObject(authService)) {
+                                JobRowView(job: job, jobService: jobService)
+                                    .environmentObject(authService)
+                            }
                         }
                     }
                     .refreshable {

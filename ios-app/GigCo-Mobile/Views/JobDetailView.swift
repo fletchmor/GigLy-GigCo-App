@@ -16,6 +16,8 @@ struct JobDetailView: View {
     @State private var showingAcceptAlert = false
     @State private var showError = false
     @State private var errorMessage = ""
+    @State private var showSuccess = false
+    @State private var successMessage = ""
     
     var body: some View {
         ScrollView {
@@ -59,10 +61,26 @@ struct JobDetailView: View {
                 
                 // Job Information
                 VStack(alignment: .leading, spacing: 16) {
+                    // Posted by section
+                    if let consumerName = job.consumerName {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Posted By")
+                                .font(.headline)
+
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.title3)
+                                Text(consumerName)
+                                    .font(.body)
+                            }
+                        }
+                    }
+
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Description")
                             .font(.headline)
-                        
+
                         Text(job.description)
                             .font(.body)
                     }
@@ -101,6 +119,14 @@ struct JobDetailView: View {
                 // Reviews Section - TODO: Implement when review system is available
                 // Placeholder for future reviews functionality
                 
+                // Debug info
+                if let status = job.status, let role = authService.currentUser?.role {
+                    Text("Status: \(status) | Role: \(role)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                }
+
                 // Action Buttons
                 VStack(spacing: 12) {
                     if canAcceptJob {
@@ -111,23 +137,33 @@ struct JobDetailView: View {
                         .controlSize(.large)
                         .frame(maxWidth: .infinity)
                     }
-                    
+
                     if canStartJob {
                         Button("Start Job") {
+                            print("🔵 JobDetailView - Start Job button tapped")
                             startJob()
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                         .frame(maxWidth: .infinity)
                     }
-                    
+
                     if canCompleteJob {
                         Button("Complete Job") {
+                            print("🔵 JobDetailView - Complete Job button tapped")
                             completeJob()
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.large)
                         .frame(maxWidth: .infinity)
+                    }
+
+                    // Show helpful message if no action buttons available
+                    if !canAcceptJob && !canStartJob && !canCompleteJob && !canCancelJob {
+                        Text("No actions available for this job")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding()
                     }
                     
                     // Review functionality temporarily removed - TODO: Implement when review system is available
@@ -163,6 +199,13 @@ struct JobDetailView: View {
         } message: {
             Text(errorMessage)
         }
+        .alert("Success", isPresented: $showSuccess) {
+            Button("OK") {
+                dismiss()
+            }
+        } message: {
+            Text(successMessage)
+        }
     }
     
     // MARK: - Computed Properties
@@ -185,15 +228,37 @@ struct JobDetailView: View {
     }
     
     private var canAcceptJob: Bool {
-        job.status == "posted" && authService.currentUser?.role == "gig_worker"
+        let result = job.status == "posted" && authService.currentUser?.role == "gig_worker"
+        print("🔵 JobDetailView - canAcceptJob: \(result) (status: \(job.status ?? "nil"), role: \(authService.currentUser?.role ?? "nil"))")
+        return result
     }
-    
+
     private var canStartJob: Bool {
-        job.status == "accepted" && authService.currentUser?.role == "gig_worker"
+        let result = job.status == "accepted" && authService.currentUser?.role == "gig_worker"
+        print("🔵 JobDetailView - canStartJob: \(result) (status: \(job.status ?? "nil"), role: \(authService.currentUser?.role ?? "nil"))")
+        return result
     }
-    
+
     private var canCompleteJob: Bool {
-        job.status == "in_progress" && authService.currentUser?.role == "gig_worker"
+        // Both worker and consumer can mark job complete when accepted, in_progress, or completed (for dual confirmation)
+        // Workers can complete from accepted status (skipping start if they want)
+        // Consumers can confirm completion when in_progress or completed
+        let userRole = authService.currentUser?.role
+
+        if userRole == "gig_worker" {
+            // Workers can complete from accepted, in_progress, or completed status
+            let canComplete = job.status == "accepted" || job.status == "in_progress" || job.status == "completed"
+            print("🔵 JobDetailView - canCompleteJob (worker): \(canComplete) (status: \(job.status ?? "nil"))")
+            return canComplete
+        } else if userRole == "consumer" {
+            // Consumers can only confirm when job is in_progress or completed
+            let canComplete = job.status == "in_progress" || job.status == "completed"
+            print("🔵 JobDetailView - canCompleteJob (consumer): \(canComplete) (status: \(job.status ?? "nil"))")
+            return canComplete
+        }
+
+        print("🔵 JobDetailView - canCompleteJob: false (invalid role or status)")
+        return false
     }
     
     
@@ -244,10 +309,14 @@ struct JobDetailView: View {
     
     private func startJob() {
         guard let jobId = job.id else { return }
-        
+
         Task {
             do {
                 try await jobService.startJob(jobId)
+                await MainActor.run {
+                    successMessage = "Job started successfully! You can now complete it when finished."
+                    showSuccess = true
+                }
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription
@@ -256,13 +325,17 @@ struct JobDetailView: View {
             }
         }
     }
-    
+
     private func completeJob() {
         guard let jobId = job.id else { return }
-        
+
         Task {
             do {
                 try await jobService.completeJob(jobId)
+                await MainActor.run {
+                    successMessage = "Job completion confirmed! The other party will also need to confirm."
+                    showSuccess = true
+                }
             } catch {
                 await MainActor.run {
                     errorMessage = error.localizedDescription

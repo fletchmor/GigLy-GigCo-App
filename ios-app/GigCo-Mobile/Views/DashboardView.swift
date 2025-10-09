@@ -111,13 +111,20 @@ struct HomeTabView: View {
                                 showingJobList = true
                             }
                             
-                            QuickActionCard(
-                                title: "My Jobs",
-                                icon: "briefcase",
-                                color: .orange
-                            ) {
-                                // Will navigate to jobs tab
+                            NavigationLink(destination: JobListView()
+                                .environmentObject(authService)
+                                .onAppear {
+                                    // This will trigger the "My Jobs" tab when the view appears
+                                }) {
+                                QuickActionCard(
+                                    title: "My Jobs",
+                                    icon: "briefcase",
+                                    color: .orange
+                                ) {
+                                    // Navigation handled by NavigationLink
+                                }
                             }
+                            .buttonStyle(PlainButtonStyle())
                         } else {
                             QuickActionCard(
                                 title: "Browse Services",

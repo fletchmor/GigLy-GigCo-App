@@ -856,6 +856,137 @@ class APIService: ObservableObject {
             task.resume()
         }
     }
+
+    // MARK: - Job Workflow Methods
+
+    func startJob(jobID: Int) async throws -> [String: Any] {
+        print("🔵 APIService.startJob - JobID: \(jobID)")
+
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/start") else {
+            print("🔴 APIService.startJob - Invalid URL")
+            throw APIError.invalidConfiguration
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.startJob - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.startJob - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.startJob - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                print("🔵 APIService.startJob - HTTP Status: \(httpResponse.statusCode)")
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                        print("🟢 APIService.startJob - Success")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.startJob - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "No error body"
+                    print("🔴 APIService.startJob - HTTP error: \(httpResponse.statusCode)")
+                    print("🔴 APIService.startJob - Error body: \(errorBody)")
+
+                    if httpResponse.statusCode == 401 {
+                        self.handleUnauthorizedResponse()
+                    }
+
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to start job: \(errorBody)"))
+                }
+            }
+            task.resume()
+        }
+    }
+
+    func completeJob(jobID: Int) async throws -> [String: Any] {
+        print("🔵 APIService.completeJob - JobID: \(jobID)")
+
+        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/complete") else {
+            print("🔴 APIService.completeJob - Invalid URL")
+            throw APIError.invalidConfiguration
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        if let token = authToken {
+            urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+                if let error = error {
+                    print("🔴 APIService.completeJob - Network error: \(error)")
+                    continuation.resume(throwing: error)
+                    return
+                }
+
+                guard let data = data else {
+                    print("🔴 APIService.completeJob - No data received")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    print("🔴 APIService.completeJob - Invalid HTTP response")
+                    continuation.resume(throwing: APIError.unexpectedResponse)
+                    return
+                }
+
+                print("🔵 APIService.completeJob - HTTP Status: \(httpResponse.statusCode)")
+                let responseBody = String(data: data, encoding: .utf8) ?? "No response body"
+                print("🔵 APIService.completeJob - Response: \(responseBody)")
+
+                if httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 {
+                    do {
+                        let response = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+                        print("🟢 APIService.completeJob - Success")
+                        print("🟢 APIService.completeJob - Fully completed: \(response["fully_completed"] ?? false)")
+                        continuation.resume(returning: response)
+                    } catch {
+                        print("🔴 APIService.completeJob - JSON decode error: \(error)")
+                        continuation.resume(throwing: error)
+                    }
+                } else {
+                    let errorBody = String(data: data, encoding: .utf8) ?? "No error body"
+                    print("🔴 APIService.completeJob - HTTP error: \(httpResponse.statusCode)")
+                    print("🔴 APIService.completeJob - Error body: \(errorBody)")
+
+                    if httpResponse.statusCode == 401 {
+                        self.handleUnauthorizedResponse()
+                    }
+
+                    continuation.resume(throwing: APIError.serverError(httpResponse.statusCode, "Failed to complete job: \(errorBody)"))
+                }
+            }
+            task.resume()
+        }
+    }
 }
 
 enum APIError: LocalizedError {
@@ -971,7 +1102,8 @@ struct JobResponse: Codable {
     let scheduledStart: String?
     let createdAt: String
     let updatedAt: String
-    let consumer: ConsumerSummary
+    let consumer: UserSummary
+    let gigWorker: UserSummary?
 
     enum CodingKeys: String, CodingKey {
         case id, uuid, title, description, category, status
@@ -983,10 +1115,11 @@ struct JobResponse: Codable {
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case consumer
+        case gigWorker = "gig_worker"
     }
 }
 
-struct ConsumerSummary: Codable {
+struct UserSummary: Codable {
     let id: Int
     let uuid: String
     let name: String

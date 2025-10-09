@@ -224,7 +224,8 @@ func StartJob(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CompleteJob allows a worker to mark a job as completed
+// CompleteJob allows a worker or consumer to mark a job as completed
+// Requires confirmation from both parties before marking as fully completed
 func CompleteJob(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -238,14 +239,24 @@ func CompleteJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get authenticated user from context (set by middleware)
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	// Get job information
 	var status string
+	var consumerID int
+	var gigWorkerID sql.NullInt32
+	var workerCompletedAt, consumerCompletedAt sql.NullTime
 	query := `
-		SELECT COALESCE(status, 'posted') as status
-		FROM jobs 
+		SELECT status, consumer_id, gig_worker_id, worker_completed_at, consumer_completed_at
+		FROM jobs
 		WHERE id = $1
 	`
-	err = config.DB.QueryRow(query, jobID).Scan(&status)
+	err = config.DB.QueryRow(query, jobID).Scan(&status, &consumerID, &gigWorkerID, &workerCompletedAt, &consumerCompletedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Job not found", http.StatusNotFound)
@@ -257,38 +268,116 @@ func CompleteJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if job is in the right status to complete
-	if status != "in_progress" {
+	// Allow completion from: accepted (auto-start), in_progress, or completed (for dual confirmation)
+	if status != "accepted" && status != "in_progress" && status != "completed" {
 		if status == "posted" {
-			http.Error(w, "Job must be started before completion", http.StatusBadRequest)
-			return
-		}
-		if status == "completed" {
-			http.Error(w, "Job has already been completed", http.StatusConflict)
+			http.Error(w, "Job must be accepted before completion", http.StatusBadRequest)
 			return
 		}
 		http.Error(w, fmt.Sprintf("Job cannot be completed in current status: %s", status), http.StatusBadRequest)
 		return
 	}
 
-	// Update job status directly (simplified for testing without Temporal)
-	updateQuery := `
-		UPDATE jobs 
-		SET status = 'completed', actual_end = NOW(), updated_at = NOW()
-		WHERE id = $1
-	`
+	// Verify user is participant in this job
+	isConsumer := consumerID == userID
+	isWorker := gigWorkerID.Valid && int(gigWorkerID.Int32) == userID
+
+	if !isConsumer && !isWorker {
+		http.Error(w, "You are not a participant in this job", http.StatusForbidden)
+		return
+	}
+
+	// Determine what to update based on user role
+	var updateQuery string
+	var alreadyConfirmed bool
+	var otherPartyConfirmed bool
+	var confirmationType string
+
+	if isWorker {
+		alreadyConfirmed = workerCompletedAt.Valid
+		otherPartyConfirmed = consumerCompletedAt.Valid
+		confirmationType = "worker"
+
+		// If job is still in "accepted" status, auto-start it when completing
+		if status == "accepted" {
+			updateQuery = `
+				UPDATE jobs
+				SET worker_completed_at = NOW(),
+				    status = 'in_progress',
+				    actual_start = NOW(),
+				    actual_end = NOW(),
+				    updated_at = NOW()
+				WHERE id = $1
+			`
+		} else {
+			updateQuery = `
+				UPDATE jobs
+				SET worker_completed_at = NOW(),
+				    actual_end = CASE WHEN actual_end IS NULL THEN NOW() ELSE actual_end END,
+				    updated_at = NOW()
+				WHERE id = $1
+			`
+		}
+	} else {
+		alreadyConfirmed = consumerCompletedAt.Valid
+		otherPartyConfirmed = workerCompletedAt.Valid
+		confirmationType = "consumer"
+		updateQuery = `
+			UPDATE jobs
+			SET consumer_completed_at = NOW(),
+			    updated_at = NOW()
+			WHERE id = $1
+		`
+	}
+
+	// Check if already confirmed
+	if alreadyConfirmed {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":                 true,
+			"message":                 "You have already confirmed job completion",
+			"job_id":                  jobID,
+			"awaiting_confirmation":   !otherPartyConfirmed,
+			"fully_completed":         otherPartyConfirmed,
+			"your_confirmation":       confirmationType,
+		})
+		return
+	}
+
+	// Mark completion for this party
 	_, err = config.DB.Exec(updateQuery, jobID)
 	if err != nil {
-		log.Printf("Database error updating job status: %v", err)
-		http.Error(w, "Failed to update job status", http.StatusInternalServerError)
+		log.Printf("Database error updating job completion: %v", err)
+		http.Error(w, "Failed to mark job as complete", http.StatusInternalServerError)
 		return
+	}
+
+	// If both parties have now confirmed, update status to completed
+	fullyCompleted := false
+	if otherPartyConfirmed {
+		statusUpdateQuery := `
+			UPDATE jobs
+			SET status = 'completed', updated_at = NOW()
+			WHERE id = $1 AND status = 'in_progress'
+		`
+		_, err = config.DB.Exec(statusUpdateQuery, jobID)
+		if err != nil {
+			log.Printf("Warning: Failed to update job status to completed: %v", err)
+		} else {
+			fullyCompleted = true
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Job completed successfully",
-		"job_id":  jobID,
+		"success":                 true,
+		"message":                 fmt.Sprintf("Job completion confirmed by %s", confirmationType),
+		"job_id":                  jobID,
+		"awaiting_confirmation":   !fullyCompleted,
+		"fully_completed":         fullyCompleted,
+		"your_confirmation":       confirmationType,
 	})
 }
 

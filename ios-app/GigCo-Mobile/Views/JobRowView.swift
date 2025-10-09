@@ -24,11 +24,22 @@ struct JobRowView: View {
                     Text(job.title)
                         .font(.headline)
                         .fontWeight(.semibold)
-                    
+
                     Text(job.description)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .lineLimit(2)
+
+                    if let consumerName = job.consumerName {
+                        HStack(spacing: 4) {
+                            Image(systemName: "person.circle.fill")
+                                .font(.caption2)
+                                .foregroundColor(.blue)
+                            Text("Posted by \(consumerName)")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
+                    }
                 }
                 
                 Spacer()

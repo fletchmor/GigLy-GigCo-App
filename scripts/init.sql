@@ -101,6 +101,8 @@ CREATE TABLE jobs (
     temporal_run_id VARCHAR(255),
     workflow_started_at TIMESTAMP WITH TIME ZONE,
     workflow_completed_at TIMESTAMP WITH TIME ZONE,
+    worker_completed_at TIMESTAMP WITH TIME ZONE,
+    consumer_completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
