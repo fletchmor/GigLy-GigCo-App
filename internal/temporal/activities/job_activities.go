@@ -324,8 +324,8 @@ func (a *JobActivities) CloseJob(ctx context.Context, jobID int) error {
 	log.Printf("Closing job %d", jobID)
 
 	query := `
-		UPDATE jobs 
-		SET status = 'closed', completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP 
+		UPDATE jobs
+		SET status = 'closed', workflow_completed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $1
 	`
 	_, err := a.db.ExecContext(ctx, query, jobID)

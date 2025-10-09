@@ -31,7 +31,22 @@ DROP TYPE IF EXISTS service_category CASCADE;
 
 -- Create enum types for better data integrity
 CREATE TYPE user_role AS ENUM ('consumer', 'gig_worker', 'admin');
-CREATE TYPE job_status AS ENUM ('posted', 'accepted', 'in_progress', 'completed', 'cancelled');
+CREATE TYPE job_status AS ENUM (
+    'posted',
+    'offer_sent',
+    'accepted',
+    'rejected',
+    'worker_assigned',
+    'scheduled',
+    'in_progress',
+    'completed',
+    'paid',
+    'review_pending',
+    'closed',
+    'cancelled',
+    'no_worker_available',
+    'payment_failed'
+);
 CREATE TYPE transaction_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
 CREATE TYPE notification_type AS ENUM ('job_posted', 'job_accepted', 'job_completed', 'payment_received', 'system_message');
 CREATE TYPE notification_status AS ENUM ('unread', 'read', 'archived');
@@ -82,6 +97,10 @@ CREATE TABLE jobs (
     actual_start TIMESTAMP WITH TIME ZONE,
     actual_end TIMESTAMP WITH TIME ZONE,
     notes TEXT,
+    temporal_workflow_id VARCHAR(255),
+    temporal_run_id VARCHAR(255),
+    workflow_started_at TIMESTAMP WITH TIME ZONE,
+    workflow_completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -332,6 +351,7 @@ CREATE INDEX idx_jobs_gig_worker_id ON jobs(gig_worker_id) WHERE gig_worker_id I
 CREATE INDEX idx_jobs_status ON jobs(status);
 CREATE INDEX idx_jobs_category ON jobs(category) WHERE category IS NOT NULL;
 CREATE INDEX idx_jobs_status_created ON jobs(status, created_at);
+CREATE INDEX idx_jobs_temporal_workflow ON jobs(temporal_workflow_id) WHERE temporal_workflow_id IS NOT NULL;
 
 -- Transactions indexes
 CREATE INDEX idx_transactions_job_id ON transactions(job_id);
