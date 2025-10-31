@@ -44,6 +44,10 @@ func GetHandlers(r chi.Router) {
 	r.Get("/api/v1/users/{id}/reviews", api.GetUserReviewStats) // Any authenticated user
 	r.Get("/api/v1/reviews/stats", api.GetPlatformReviewStats) // Any authenticated user
 	r.Get("/api/v1/reviews/top-rated", api.GetTopRatedUsers) // Any authenticated user
+
+	// Payment Management
+	r.Get("/api/v1/jobs/{id}/payments", api.GetJobTransactions)       // Get all transactions for a job
+	r.Get("/api/v1/jobs/{id}/payment-summary", api.GetJobPaymentSummary) // Get payment summary for a job
 }
 
 // PostPublicHandlers handles public POST routes (no authentication required)
@@ -85,6 +89,11 @@ func PostHandlers(r chi.Router) {
 
 	// Transaction Management
 	r.With(middleware.RequireRole("admin")).Post("/api/v1/transactions/create", api.CreateTransaction)
+
+	// Payment Processing
+	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/authorize", api.AuthorizeJobPayment)    // Pre-authorize payment (escrow)
+	r.With(middleware.RequireRoles("consumer", "gig_worker")).Post("/api/v1/payments/capture", api.CaptureJobPayment)  // Capture payment (release from escrow)
+	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/refund", api.RefundJobPayment)          // Refund payment
 }
 
 func PutHandlers(r chi.Router) {
