@@ -82,28 +82,51 @@ docker compose up --build
 
 ### Project Structure
 ```
-├── cmd/main.go              # Application entry point
+├── cmd/                     # Application entry points
+│   ├── main.go             # Main API server
+│   └── worker/main.go      # Temporal worker
 ├── api/                     # HTTP handlers and API logic
-├── handler/                 # Route definitions  
-├── config/                  # Database configuration
+│   ├── api.go              # Core endpoints
+│   ├── auth.go             # Authentication
+│   ├── payment_handlers.go # Payment processing
+│   └── helpers.go          # Utility functions
+├── handler/                 # Route definitions
+├── config/                  # Configuration (DB, payments)
 ├── internal/
-│   ├── model/              # Data models
-│   └── middleware/         # HTTP middleware
-├── scripts/init.sql        # Database initialization
+│   ├── model/              # Data models and structs
+│   ├── middleware/         # HTTP middleware
+│   ├── payment/            # Payment service layer
+│   └── temporal/           # Temporal workflows
+├── ios-app/                # iOS Mobile Application (SwiftUI)
+│   └── GigCo-Mobile/
+│       ├── Views/          # SwiftUI views
+│       ├── Services/       # API services
+│       └── Models/         # Data models
+├── scripts/                # Database scripts
+│   └── init.sql           # Complete schema
 ├── templates/              # HTML email templates
 ├── test/                   # Postman API collections
+├── docs/                   # Technical documentation
 ├── docker-compose.yml      # Development environment
 └── Dockerfile             # Application container
 ```
 
 ### Tech Stack
-- **Language**: Go 1.23.4
+**Backend:**
+- **Language**: Go 1.24.0
 - **Router**: Chi v5
 - **Database**: PostgreSQL 17 with comprehensive schema
 - **Workflow Engine**: Temporal v1.35.0
+- **Payment Processing**: Clover integration
 - **Environment**: Docker & Docker Compose
 - **Testing**: Postman collections with comprehensive API tests
 - **Database Admin**: Adminer web interface
+
+**Mobile:**
+- **Platform**: iOS 15+
+- **Framework**: SwiftUI
+- **Architecture**: MVVM pattern
+- **API Client**: Native URLSession
 
 ### Running Locally
 
@@ -311,7 +334,10 @@ SELECT * FROM jobs ORDER BY created_at DESC LIMIT 5;
 
 ## 📝 Documentation
 
-- **[docs/](./docs/)** - Complete technical documentation index\n- `CLAUDE.md` - Development guidance for AI assistants
+- **[API_REFERENCE.md](./API_REFERENCE.md)** - Complete API endpoint documentation with examples
+- **[docs/](./docs/)** - Complete technical documentation index
+- `CLAUDE.md` - Development guidance for AI assistants
+- `CLOVER_INTEGRATION_GUIDE.md` - Payment integration documentation
 - `DOCKER_SETUP.md` - Detailed Docker setup instructions
 - **[docs/implementation-plan.md](./docs/implementation-plan.md)** - Complete development roadmap
 - **[docs/requirements.md](./docs/requirements.md)** - Original project requirements
@@ -365,5 +391,5 @@ SELECT * FROM jobs ORDER BY created_at DESC LIMIT 5;
 
 ---
 
-**Status**: Core Platform Complete - Production Ready  
-**Last Updated**: August 19, 2025
+**Status**: Core Platform Complete - Payment Integration Live
+**Last Updated**: December 12, 2025
