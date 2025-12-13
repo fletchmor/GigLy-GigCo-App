@@ -13,7 +13,7 @@ func GetPublicHandlers(r chi.Router) {
 	r.Get("/health", api.HealthCheck)
 	r.Get("/", middleware.ServeEmailForm)
 	r.Get("/email-submit", middleware.HandleEmailSubmission)
-	
+
 	// Swagger documentation
 	r.Get("/swagger/*", httpSwagger.Handler(
 		httpSwagger.URL("/swagger/doc.json"),
@@ -38,16 +38,19 @@ func GetHandlers(r chi.Router) {
 	r.With(middleware.RequireRole("gig_worker")).Get("/api/v1/jobs/available", api.GetAvailableJobs)
 
 	// Review Management
-	r.Get("/api/v1/reviews", api.GetReviews)            // Any authenticated user (public reviews only)
-	r.Get("/api/v1/reviews/{id}", api.GetReviewByID)    // Any authenticated user
-	r.Get("/api/v1/jobs/{id}/reviews", api.GetJobReviews) // Any authenticated user
+	r.Get("/api/v1/reviews", api.GetReviews)                    // Any authenticated user (public reviews only)
+	r.Get("/api/v1/reviews/{id}", api.GetReviewByID)            // Any authenticated user
+	r.Get("/api/v1/jobs/{id}/reviews", api.GetJobReviews)       // Any authenticated user
 	r.Get("/api/v1/users/{id}/reviews", api.GetUserReviewStats) // Any authenticated user
-	r.Get("/api/v1/reviews/stats", api.GetPlatformReviewStats) // Any authenticated user
-	r.Get("/api/v1/reviews/top-rated", api.GetTopRatedUsers) // Any authenticated user
+	r.Get("/api/v1/reviews/stats", api.GetPlatformReviewStats)  // Any authenticated user
+	r.Get("/api/v1/reviews/top-rated", api.GetTopRatedUsers)    // Any authenticated user
 
 	// Payment Management
-	r.Get("/api/v1/jobs/{id}/payments", api.GetJobTransactions)       // Get all transactions for a job
+	r.Get("/api/v1/jobs/{id}/payments", api.GetJobTransactions)          // Get all transactions for a job
 	r.Get("/api/v1/jobs/{id}/payment-summary", api.GetJobPaymentSummary) // Get payment summary for a job
+
+	// Schedule Endpoints
+	r.Get("/api/v1/schedules", api.GetSchedules) // Get all schedules
 }
 
 // PostPublicHandlers handles public POST routes (no authentication required)
@@ -91,9 +94,9 @@ func PostHandlers(r chi.Router) {
 	r.With(middleware.RequireRole("admin")).Post("/api/v1/transactions/create", api.CreateTransaction)
 
 	// Payment Processing
-	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/authorize", api.AuthorizeJobPayment)    // Pre-authorize payment (escrow)
-	r.With(middleware.RequireRoles("consumer", "gig_worker")).Post("/api/v1/payments/capture", api.CaptureJobPayment)  // Capture payment (release from escrow)
-	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/refund", api.RefundJobPayment)          // Refund payment
+	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/authorize", api.AuthorizeJobPayment)            // Pre-authorize payment (escrow)
+	r.With(middleware.RequireRoles("consumer", "gig_worker")).Post("/api/v1/payments/capture", api.CaptureJobPayment) // Capture payment (release from escrow)
+	r.With(middleware.RequireRole("consumer")).Post("/api/v1/payments/refund", api.RefundJobPayment)                  // Refund payment
 }
 
 func PutHandlers(r chi.Router) {

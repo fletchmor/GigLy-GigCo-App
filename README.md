@@ -56,10 +56,18 @@ docker compose up --build
 - **Create Job**: `POST /api/v1/jobs/create` - Post new jobs
 - **Accept Job**: `POST /api/v1/jobs/{id}/accept` - Accept jobs (triggers workflow)
 
+#### Payment System
+- **Authorize Payment**: `POST /api/v1/payments/authorize` - Pre-authorize job payment (escrow)
+- **Capture Payment**: `POST /api/v1/payments/capture` - Release payment from escrow
+- **Refund Payment**: `POST /api/v1/payments/refund` - Process payment refund
+- **Payment Summary**: `GET /api/v1/jobs/{id}/payment-summary` - Get payment summary for a job
+- **Job Transactions**: `GET /api/v1/jobs/{id}/payments` - List all transactions for a job
+
 #### Financial System
-- **Create Transaction**: `POST /api/v1/transactions/create` - Process payments
+- **Create Transaction**: `POST /api/v1/transactions/create` - Process transactions (admin only)
 
 #### Scheduling
+- **List Schedules**: `GET /api/v1/schedules` - Get schedules with filtering (worker, availability, dates)
 - **Create Schedule**: `POST /api/v1/schedules/create` - Manage worker availability
 
 ### Infrastructure
@@ -147,6 +155,37 @@ PORT=8080
 # Temporal Configuration
 TEMPORAL_HOST=temporal:7233
 ```
+
+## 💳 Payment System
+
+### Payment Flow
+GigCo implements a secure **escrow-based payment system** integrated with Clover:
+
+1. **Authorization (Escrow)**: When a consumer posts a job, payment is pre-authorized
+   - Funds are held in escrow but not yet captured
+   - Job can proceed without money changing hands
+   - `POST /api/v1/payments/authorize`
+
+2. **Capture (Release)**: When the job is completed and confirmed
+   - Funds are captured from escrow
+   - Platform fees are calculated automatically
+   - Worker receives their portion
+   - `POST /api/v1/payments/capture`
+
+3. **Refund**: If needed, payments can be refunded
+   - Full or partial refunds supported
+   - Automatic fee adjustments
+   - `POST /api/v1/payments/refund`
+
+### Payment Features
+- **Secure Escrow**: Funds held safely until job completion
+- **Automatic Fee Calculation**: Platform fees calculated on capture
+- **Transaction Tracking**: Complete audit trail for all payments
+- **Multi-Provider Support**: Currently integrated with Clover, extensible for other providers
+- **Payment Summary**: Real-time payment status and breakdown per job
+
+### Payment Endpoints
+See the API Endpoints section for detailed payment endpoint documentation.
 
 ## 🧪 Testing
 
@@ -257,7 +296,8 @@ SELECT * FROM jobs ORDER BY created_at DESC LIMIT 5;
 - [x] Database seeding and fixtures
 
 ### 🚧 In Development
-- [ ] Payment provider integration
+- [x] Payment provider integration (Clover)
+- [x] Payment escrow system (authorize/capture/refund)
 - [ ] Email notification system
 - [ ] Advanced worker matching algorithms
 - [ ] Mobile API optimizations

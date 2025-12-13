@@ -4,6 +4,7 @@ import (
 	"app/config"
 	"app/internal/model"
 	"app/internal/temporal"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -206,6 +207,180 @@ func CreateSchedule(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(schedule)
+}
+
+// GetSchedules godoc
+// @Summary Get schedules with optional filters
+// @Description Retrieve schedules with optional filtering by worker, availability, and date range
+// @Tags schedules
+// @Accept json
+// @Produce json
+// @Param worker_id query int false "Filter by gig worker ID"
+// @Param is_available query bool false "Filter by availability"
+// @Param start_date query string false "Filter by start date (YYYY-MM-DD)"
+// @Param end_date query string false "Filter by end date (YYYY-MM-DD)"
+// @Param limit query int false "Number of results per page (default: 20, max: 100)"
+// @Success 200 {object} model.SchedulesListResponse
+// @Failure 400 {object} model.ErrorResponse
+// @Failure 500 {object} model.ErrorResponse
+// @Router /api/v1/schedules [get]
+func GetSchedules(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		RespondWithError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), time.Second*10)
+	defer cancel()
+
+	// Parse and validate limit parameter
+	limit, err := ParseIntParam(r, "limit", DefaultPageSize, MinPageSize, MaxPageSize)
+	if err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			RespondWithValidationError(w, valErr)
+			return
+		}
+		RespondWithError(w, http.StatusBadRequest, "Invalid limit parameter")
+		return
+	}
+
+	// Parse and validate worker_id parameter
+	var workerID *int
+	if workerIDParam := r.URL.Query().Get("worker_id"); workerIDParam != "" {
+		id, err := ParseIntParam(r, "worker_id", 0, 1, 0)
+		if err != nil {
+			if valErr, ok := err.(*ValidationError); ok {
+				RespondWithValidationError(w, valErr)
+				return
+			}
+			RespondWithError(w, http.StatusBadRequest, "Invalid worker_id parameter")
+			return
+		}
+		workerID = &id
+	}
+
+	// Parse and validate is_available parameter
+	var isAvailable *bool
+	if isAvailableValue, provided, err := ParseBoolParam(r, "is_available"); err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			RespondWithValidationError(w, valErr)
+			return
+		}
+		RespondWithError(w, http.StatusBadRequest, "Invalid is_available parameter")
+		return
+	} else if provided {
+		isAvailable = &isAvailableValue
+	}
+
+	// Parse and validate date parameters
+	startDate, err := ParseDateParam(r, "start_date")
+	if err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			RespondWithValidationError(w, valErr)
+			return
+		}
+		RespondWithError(w, http.StatusBadRequest, "Invalid start_date parameter")
+		return
+	}
+
+	endDate, err := ParseDateParam(r, "end_date")
+	if err != nil {
+		if valErr, ok := err.(*ValidationError); ok {
+			RespondWithValidationError(w, valErr)
+			return
+		}
+		RespondWithError(w, http.StatusBadRequest, "Invalid end_date parameter")
+		return
+	}
+
+	// Build query with validated parameters
+	baseQuery := `
+		SELECT s.id, s.uuid, s.gig_worker_id, s.title, s.start_time, s.end_time,
+		       s.is_available, s.job_id, s.recurring_pattern, s.recurring_until,
+		       s.notes, s.created_at, s.updated_at
+		FROM schedules s
+	`
+
+	var whereClauses []string
+	var args []any
+	argsIndex := 1
+
+	if workerID != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("s.gig_worker_id = $%d", argsIndex))
+		args = append(args, *workerID)
+		argsIndex++
+	}
+
+	if isAvailable != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("s.is_available = $%d", argsIndex))
+		args = append(args, *isAvailable)
+		argsIndex++
+	}
+
+	if startDate != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("s.start_time >= $%d", argsIndex))
+		args = append(args, *startDate)
+		argsIndex++
+	}
+
+	if endDate != nil {
+		whereClauses = append(whereClauses, fmt.Sprintf("s.end_time <= $%d", argsIndex))
+		args = append(args, *endDate)
+		argsIndex++
+	}
+
+	if len(whereClauses) > 0 {
+		baseQuery += " WHERE " + strings.Join(whereClauses, " AND ")
+	}
+
+	baseQuery += fmt.Sprintf(" ORDER BY s.start_time ASC LIMIT $%d", argsIndex)
+	args = append(args, limit)
+
+	// Execute query
+	rows, err := config.DB.QueryContext(ctx, baseQuery, args...)
+	if err != nil {
+		log.Printf("Error querying schedules: %v | Query: %s | Args: %v", err, baseQuery, args)
+		RespondWithError(w, http.StatusInternalServerError, "Unable to retrieve schedules")
+		return
+	}
+	defer rows.Close()
+
+	schedules := make([]model.Schedule, 0, limit)
+
+	// Scan results
+	for rows.Next() {
+		var schedule model.Schedule
+
+		err := rows.Scan(
+			&schedule.ID, &schedule.Uuid, &schedule.GigWorkerID, &schedule.Title,
+			&schedule.StartTime, &schedule.EndTime, &schedule.IsAvailable, &schedule.JobID,
+			&schedule.RecurringPattern, &schedule.RecurringUntil, &schedule.Notes,
+			&schedule.CreatedAt, &schedule.UpdatedAt,
+		)
+
+		if err != nil {
+			log.Printf("Error scanning schedule row: %v", err)
+			RespondWithError(w, http.StatusInternalServerError, "Error processing schedule data")
+			return
+		}
+
+		schedules = append(schedules, schedule)
+	}
+
+	// Check for errors during iteration
+	if err := rows.Err(); err != nil {
+		log.Printf("Error iterating schedule rows: %v", err)
+		RespondWithError(w, http.StatusInternalServerError, "Error processing schedules")
+		return
+	}
+
+	// Send response with structured format
+	response := model.SchedulesListResponse{
+		Schedules: schedules,
+		Count:     len(schedules),
+	}
+
+	RespondWithJSON(w, http.StatusOK, response)
 }
 
 func CreateTransaction(w http.ResponseWriter, r *http.Request) {
@@ -514,7 +689,7 @@ func GetJobs(w http.ResponseWriter, r *http.Request) {
 	countQuery := "SELECT COUNT(*) FROM jobs j"
 
 	var whereClauses []string
-	var args []interface{}
+	var args []any
 	argIndex := 1
 
 	// Add filters

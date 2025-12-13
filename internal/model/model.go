@@ -95,14 +95,14 @@ type Schedule struct {
 	ID               int        `json:"id"`
 	Uuid             string     `json:"uuid"`
 	GigWorkerID      int        `json:"gig_worker_id"`
-	Title            string     `json:"title"`
+	Title            *string    `json:"title"`
 	StartTime        time.Time  `json:"start_time"`
 	EndTime          time.Time  `json:"end_time"`
 	IsAvailable      bool       `json:"is_available"`
 	JobID            *int       `json:"job_id"`
-	RecurringPattern string     `json:"recurring_pattern"`
+	RecurringPattern *string    `json:"recurring_pattern"`
 	RecurringUntil   *time.Time `json:"recurring_until"`
-	Notes            string     `json:"notes"`
+	Notes            *string    `json:"notes"`
 	CreatedAt        time.Time  `json:"created_at"`
 	UpdatedAt        time.Time  `json:"updated_at"`
 }
@@ -217,5 +217,22 @@ type Pagination struct {
 }
 
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Error   string            `json:"error"`
+	Message string            `json:"message,omitempty"`
+	Code    string            `json:"code,omitempty"`
+	Details map[string]string `json:"details,omitempty"`
+}
+
+// ValidationError represents a validation error response
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+	Value   string `json:"value,omitempty"`
+}
+
+// SchedulesListResponse represents the response for GET /schedules
+type SchedulesListResponse struct {
+	Schedules  []Schedule `json:"schedules"`
+	Pagination Pagination `json:"pagination,omitempty"`
+	Count      int        `json:"count"`
 }
