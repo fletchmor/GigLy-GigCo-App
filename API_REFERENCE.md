@@ -18,6 +18,8 @@ http://localhost:8080
 
 ## Authentication
 
+**Important:** All endpoints except `/health`, `/api/v1/auth/*` require JWT authentication via the `Authorization: Bearer <token>` header.
+
 ### Register User
 ```http
 POST /api/v1/auth/register
