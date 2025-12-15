@@ -48,3 +48,8 @@ Thumbs.db
 
 # Temporal
 .temporal/
+
+# Environment files (keep .env.example only)
+.env.production
+.env.staging
+.env.development
