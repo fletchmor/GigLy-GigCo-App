@@ -895,26 +895,31 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get gig worker ID from JWT token
+	// Get gig worker ID from JWT token (preferred) or request body (mobile app compatibility)
 	userID := GetUserIDFromContext(r)
-	if userID == 0 {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Get the gig worker ID for this user
 	var gigWorkerID int
-	err = config.DB.QueryRow(`
-		SELECT id FROM gigworkers WHERE user_id = $1 AND is_active = true
-	`, userID).Scan(&gigWorkerID)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "User is not registered as a gig worker", http.StatusForbidden)
-		} else {
+
+	if userID != 0 {
+		// Try to get gig worker ID from authenticated user
+		err = config.DB.QueryRow(`
+			SELECT id FROM gigworkers WHERE user_id = $1 AND is_active = true
+		`, userID).Scan(&gigWorkerID)
+		if err != nil && err != sql.ErrNoRows {
 			log.Printf("Error fetching gig worker: %v", err)
 			http.Error(w, "Failed to fetch gig worker profile", http.StatusInternalServerError)
+			return
 		}
-		return
+	}
+
+	// Fallback to request body for mobile app compatibility
+	if gigWorkerID == 0 {
+		var req struct {
+			GigWorkerID int `json:"gig_worker_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil && req.GigWorkerID > 0 {
+			gigWorkerID = req.GigWorkerID
+			log.Printf("Using gig_worker_id from request body: %d", gigWorkerID)
+		}
 	}
 
 	if gigWorkerID <= 0 {
