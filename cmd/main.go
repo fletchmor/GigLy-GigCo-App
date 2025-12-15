@@ -42,10 +42,14 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+	// Initialize database
 	config.ConnectDB()
 
 	// Initialize JWT
 	auth.InitJWT()
+
+	// Initialize payment configuration (optional - warnings only if not configured)
+	config.InitPaymentConfig()
 
 	port := os.Getenv("PORT")
 	serverAddress := fmt.Sprintf(":%s", port)

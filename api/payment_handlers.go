@@ -34,8 +34,8 @@ func AuthorizeJobPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user ID from auth context (you should have auth middleware)
-	userID := getUserIDFromContext(r)
+	// Get user ID from auth context
+	userID := GetUserIDFromContext(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -78,7 +78,7 @@ func CaptureJobPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserIDFromContext(r)
+	userID := GetUserIDFromContext(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -121,7 +121,7 @@ func RefundJobPayment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserIDFromContext(r)
+	userID := GetUserIDFromContext(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -171,7 +171,7 @@ func GetJobPaymentSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserIDFromContext(r)
+	userID := GetUserIDFromContext(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -220,7 +220,7 @@ func GetJobTransactions(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userID := getUserIDFromContext(r)
+	userID := GetUserIDFromContext(r)
 	if userID == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -289,26 +289,3 @@ func GetJobTransactions(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ==============================================
-// HELPER FUNCTIONS
-// ==============================================
-
-// getUserIDFromContext gets the user ID from request context
-// This is a placeholder - you should implement proper JWT authentication
-func getUserIDFromContext(r *http.Request) int {
-	// TODO: Implement proper JWT authentication middleware
-	// For now, check for a header or query parameter
-	userIDStr := r.Header.Get("X-User-ID")
-	if userIDStr == "" {
-		userIDStr = r.URL.Query().Get("user_id")
-	}
-
-	if userIDStr != "" {
-		userID, err := strconv.Atoi(userIDStr)
-		if err == nil {
-			return userID
-		}
-	}
-
-	return 0
-}

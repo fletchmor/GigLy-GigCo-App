@@ -147,3 +147,42 @@ func RespondWithJSON(w http.ResponseWriter, statusCode int, data any) {
 		return
 	}
 }
+
+// User context helpers
+
+// GetUserIDFromContext extracts the authenticated user ID from request context
+// Returns 0 if user ID is not found in context
+func GetUserIDFromContext(r *http.Request) int {
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		return 0
+	}
+	return userID
+}
+
+// GetUserUUIDFromContext extracts the authenticated user UUID from request context
+func GetUserUUIDFromContext(r *http.Request) string {
+	uuid, ok := r.Context().Value("user_uuid").(string)
+	if !ok {
+		return ""
+	}
+	return uuid
+}
+
+// GetUserEmailFromContext extracts the authenticated user email from request context
+func GetUserEmailFromContext(r *http.Request) string {
+	email, ok := r.Context().Value("user_email").(string)
+	if !ok {
+		return ""
+	}
+	return email
+}
+
+// GetUserRoleFromContext extracts the authenticated user role from request context
+func GetUserRoleFromContext(r *http.Request) string {
+	role, ok := r.Context().Value("user_role").(string)
+	if !ok {
+		return ""
+	}
+	return role
+}

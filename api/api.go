@@ -527,12 +527,16 @@ func CreateJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Get consumer_id from JWT token
-	// For now, use from request (required for API tests)
-	consumerID := req.ConsumerID
+	// Get consumer_id from JWT token
+	consumerID := GetUserIDFromContext(r)
 	if consumerID == 0 {
-		http.Error(w, "Consumer ID is required", http.StatusBadRequest)
-		return
+		// Fallback to request body for testing purposes
+		if req.ConsumerID != 0 {
+			consumerID = req.ConsumerID
+		} else {
+			http.Error(w, "Unauthorized - Consumer ID required", http.StatusUnauthorized)
+			return
+		}
 	}
 
 	// Handle alternative field names for backward compatibility
@@ -891,18 +895,29 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Get gig worker ID from JWT token
-	// For now, we'll require it in the request body
-	var req struct {
-		GigWorkerID int `json:"gig_worker_id"`
-	}
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		http.Error(w, "Invalid JSON data", http.StatusBadRequest)
+	// Get gig worker ID from JWT token
+	userID := GetUserIDFromContext(r)
+	if userID == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	if req.GigWorkerID <= 0 {
+	// Get the gig worker ID for this user
+	var gigWorkerID int
+	err = config.DB.QueryRow(`
+		SELECT id FROM gigworkers WHERE user_id = $1 AND is_active = true
+	`, userID).Scan(&gigWorkerID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User is not registered as a gig worker", http.StatusForbidden)
+		} else {
+			log.Printf("Error fetching gig worker: %v", err)
+			http.Error(w, "Failed to fetch gig worker profile", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	if gigWorkerID <= 0 {
 		http.Error(w, "Gig worker ID is required", http.StatusBadRequest)
 		return
 	}
@@ -955,7 +970,7 @@ func AcceptJob(w http.ResponseWriter, r *http.Request) {
 	var uuid string
 	var updatedAt time.Time
 
-	err = config.DB.QueryRow(query, req.GigWorkerID, jobID).Scan(&id, &uuid, &updatedAt)
+	err = config.DB.QueryRow(query, gigWorkerID, jobID).Scan(&id, &uuid, &updatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, "Job acceptance failed due to concurrent update", http.StatusConflict)
