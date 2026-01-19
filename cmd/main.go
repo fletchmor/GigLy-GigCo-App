@@ -6,10 +6,14 @@ import (
 	"app/handler"
 	"app/internal/auth"
 	"app/internal/middleware"
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
@@ -42,6 +46,13 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using environment variables")
 	}
+
+	// Validate required configuration in production
+	appEnv := os.Getenv("APP_ENV")
+	if appEnv == "production" {
+		validateProductionConfig()
+	}
+
 	// Initialize database
 	config.ConnectDB()
 
@@ -52,23 +63,114 @@ func main() {
 	config.InitPaymentConfig()
 
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	serverAddress := fmt.Sprintf(":%s", port)
-	NewServer := chi.NewRouter()
-	NewServer.Use(middleware.Logger)
-	
+
+	// Initialize rate limiters
+	standardLimiter := middleware.StandardRateLimit()
+
+	// Create router
+	router := chi.NewRouter()
+
+	// Apply global middleware (order matters!)
+	router.Use(middleware.SecurityHeaders)                           // Security headers first
+	router.Use(middleware.CORS(middleware.DefaultCORSConfig()))      // CORS handling
+	router.Use(middleware.RateLimit(standardLimiter))                // Rate limiting
+	router.Use(middleware.Logger)                                    // Request logging
+
 	// Public routes (no JWT required)
-	handler.GetPublicHandlers(NewServer)
-	handler.PostPublicHandlers(NewServer)
-	
+	handler.GetPublicHandlers(router)
+	handler.PostPublicHandlers(router)
+
 	// Protected routes (JWT required)
-	NewServer.Group(func(r chi.Router) {
+	router.Group(func(r chi.Router) {
 		r.Use(middleware.JWTAuth)
 		handler.GetHandlers(r)
 		handler.PostHandlers(r)
 		handler.PutHandlers(r)
 		handler.DeleteHandlers(r)
 	})
-	
-	log.Println("Server starting")
-	log.Fatal(http.ListenAndServe(serverAddress, NewServer))
+
+	// Configure HTTP server with timeouts
+	server := &http.Server{
+		Addr:         serverAddress,
+		Handler:      router,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	// Channel to listen for shutdown signals
+	done := make(chan bool, 1)
+	quit := make(chan os.Signal, 1)
+
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Graceful shutdown goroutine
+	go func() {
+		<-quit
+		log.Println("Server is shutting down...")
+
+		// Create context with timeout for shutdown
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		server.SetKeepAlivesEnabled(false)
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("Could not gracefully shutdown the server: %v\n", err)
+		}
+		close(done)
+	}()
+
+	// Check if TLS certificates are provided
+	tlsCert := os.Getenv("TLS_CERT")
+	tlsKey := os.Getenv("TLS_KEY")
+
+	if tlsCert != "" && tlsKey != "" {
+		log.Printf("Starting HTTPS server on %s", serverAddress)
+		log.Printf("Using TLS certificate: %s", tlsCert)
+		if err := server.ListenAndServeTLS(tlsCert, tlsKey); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not start server: %v\n", err)
+		}
+	} else {
+		log.Printf("Starting HTTP server on %s", serverAddress)
+		if appEnv == "production" {
+			log.Println("WARNING: Running without TLS in production - this is not recommended!")
+		}
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Could not start server: %v\n", err)
+		}
+	}
+
+	<-done
+	log.Println("Server stopped gracefully")
+}
+
+// validateProductionConfig ensures required configuration is set for production
+func validateProductionConfig() {
+	required := []string{
+		"JWT_SECRET",
+		"DB_HOST",
+		"DB_NAME",
+		"DB_USER",
+		"DB_PASSWORD",
+	}
+
+	missing := []string{}
+	for _, key := range required {
+		if os.Getenv(key) == "" {
+			missing = append(missing, key)
+		}
+	}
+
+	if len(missing) > 0 {
+		log.Fatalf("FATAL: Missing required environment variables for production: %v", missing)
+	}
+
+	// Warn about security-sensitive settings
+	if os.Getenv("DB_SSLMODE") == "disable" {
+		log.Println("WARNING: DB_SSLMODE is disabled - database connections are not encrypted")
+	}
 }

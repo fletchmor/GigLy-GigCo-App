@@ -40,14 +40,13 @@ COPY --from=builder /app/templates ./templates
 # Expose port
 EXPOSE 8080
 
-# Set default environment variables
+# Set non-sensitive default environment variables only
+# All sensitive values MUST be provided at runtime
 ENV PORT=8080
-ENV DB_HOST=postgres
-ENV DB_PORT=5433
-ENV DB_NAME=gigco
-ENV DB_USER=postgres
-ENV DB_PASSWORD=password
-ENV DB_SSLMODE=disable
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
 # Run the application
 CMD ["./main"]

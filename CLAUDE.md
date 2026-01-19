@@ -4,12 +4,18 @@ This file contains configuration and context for Claude Code to help with develo
 
 ## Project Information
 
+- **Status**: Production Ready (v1.0.0)
 - **Framework**: Chi v5 (Go HTTP router)
-- **Language**: Go 1.23.4
+- **Language**: Go 1.24.0
 - **Package Manager**: Go Modules
 - **Database**: PostgreSQL 17
 - **Workflow Engine**: Temporal v1.35.0
 - **Containerization**: Docker & Docker Compose
+- **CI/CD**: GitHub Actions
+- **Logging**: zerolog (structured JSON)
+- **Error Tracking**: Sentry
+- **Email**: SendGrid
+- **Push Notifications**: Firebase Cloud Messaging
 
 ## Common Commands
 
@@ -34,32 +40,43 @@ This file contains configuration and context for Claude Code to help with develo
 ```
 app/
 ├── cmd/                    # Application entry points
-│   ├── main.go            # Main API server
+│   ├── main.go            # Main API server (security middleware, graceful shutdown)
 │   └── worker/main.go     # Temporal worker
 ├── api/                   # HTTP handlers and API logic
 │   ├── api.go            # Core API endpoints
-│   ├── auth.go           # Authentication endpoints
+│   ├── auth.go           # Authentication (password validation, admin restrictions)
+│   ├── health.go         # Health check endpoints (ready, live, metrics)
 │   └── job_workflow_handlers.go # Workflow-related endpoints
 ├── handler/               # Route definitions
-├── config/                # Configuration (database, etc.)
+├── config/                # Configuration (database, payments)
 ├── internal/
 │   ├── model/            # Data models and structs
 │   ├── middleware/       # HTTP middleware
+│   │   ├── middleware.go # JWT auth, logging
+│   │   └── security.go   # Security headers, CORS, rate limiting
+│   ├── auth/             # Authentication logic
+│   │   ├── jwt.go        # JWT generation/validation
+│   │   └── jwt_test.go   # JWT tests
+│   ├── logger/           # Structured logging (zerolog)
+│   ├── email/            # Email service (SendGrid)
+│   ├── sentry/           # Error tracking (Sentry)
+│   ├── notifications/    # Push notifications (FCM)
 │   └── temporal/         # Temporal workflows and activities
-│       ├── activities/   # Temporal activities
-│       ├── workflows/    # Temporal workflows
-│       └── client.go     # Temporal client setup
 ├── ios-app/              # iOS Mobile Application
 │   └── GigCo-Mobile/
 │       ├── Views/        # SwiftUI views
-│       ├── Services/     # API and business logic services
+│       ├── Services/     # API services, SSL pinning
+│       ├── Config/       # Environment configuration
 │       └── Models/       # Data models
-├── scripts/              # Database scripts
+├── scripts/              # Database and utility scripts
 │   ├── init.sql         # Complete database schema
-│   └── *.sql            # Additional migration scripts
+│   └── load_test.js     # k6 load testing script
+├── .github/workflows/    # CI/CD pipelines
+│   └── ci.yml           # Main CI/CD workflow
 ├── templates/            # HTML email templates
 ├── test/                 # Postman API collections
-└── docker-compose.yml    # Development environment
+├── docker-compose.yml    # Development environment
+└── docker-compose.prod.yml # Production environment
 ```
 
 ## Notes
@@ -154,7 +171,42 @@ app/
    - Consumers can confirm from "in_progress" or "completed" status
    - Auto-starts job if worker completes from "accepted" status
 
-### Recent Changes (2025-10-09)
+### Recent Changes (2026-01-19) - Production Ready Release
+
+#### Security Enhancements
+- ✅ Security headers middleware (X-Frame-Options, HSTS, CSP, etc.)
+- ✅ CORS protection with configurable allowed origins
+- ✅ Rate limiting (100/min standard, 5/min for auth)
+- ✅ Strong password policy (10+ chars, 3/4 complexity)
+- ✅ Admin registration blocked in production
+- ✅ JWT secret validation in production
+- ✅ Graceful shutdown with connection draining
+- ✅ HTTP server timeouts (read/write/idle)
+
+#### New Services
+- ✅ Structured logging with zerolog (`internal/logger/`)
+- ✅ Sentry error tracking (`internal/sentry/`)
+- ✅ Email service with SendGrid (`internal/email/`)
+- ✅ Push notifications with FCM (`internal/notifications/`)
+
+#### Infrastructure
+- ✅ GitHub Actions CI/CD pipeline (`.github/workflows/ci.yml`)
+- ✅ Production Docker Compose (`docker-compose.prod.yml`)
+- ✅ Kubernetes-style health checks (`/ready`, `/live`, `/metrics`)
+- ✅ Load testing with k6 (`scripts/load_test.js`)
+- ✅ Unit tests for auth and API validation
+
+#### iOS App
+- ✅ SSL certificate pinning implementation
+- ✅ Configurable development API URL
+- ✅ Secure Keychain token storage
+
+#### Documentation
+- ✅ DEPLOYMENT.md - Production deployment guide
+- ✅ SECURITY.md - Security architecture
+- ✅ CHANGELOG.md - Version history
+
+### Previous Changes (2025-10-09)
 - ✅ Fixed iOS navigation - Jobs are now tappable to view details
 - ✅ Added dual completion system - Both worker and consumer must confirm
 - ✅ Added username display - Shows who posted each job
@@ -162,3 +214,24 @@ app/
 - ✅ Fixed authentication to handle NULL password fields
 - ✅ Expanded job_status enum to include all workflow states
 - ✅ Added temporal tracking columns to jobs table
+
+### Production Environment Variables
+Required for production deployment:
+```bash
+APP_ENV=production
+JWT_SECRET=<64+ characters>
+DB_SSLMODE=require
+CORS_ALLOWED_ORIGINS=https://your-domain.com
+
+# Optional but recommended
+SENDGRID_API_KEY=<key>
+SENTRY_DSN=<dsn>
+FCM_SERVER_KEY=<key>
+```
+
+### Key Files Modified for Production
+- `cmd/main.go` - Security middleware, graceful shutdown
+- `internal/auth/jwt.go` - Production secret validation
+- `api/auth.go` - Password strength, admin protection
+- `Dockerfile` - Removed hardcoded secrets
+- `ios-app/.../URLSessionDelegate.swift` - SSL pinning

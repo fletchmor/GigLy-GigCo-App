@@ -12,6 +12,8 @@ services:
       - DB_PASSWORD=bamboo
       - DB_SSLMODE=disable
       - TEMPORAL_HOST=temporal:7233
+      - TLS_CERT=/app/certs/cert.pem
+      - TLS_KEY=/app/certs/key.pem
     depends_on:
       postgres:
         condition: service_healthy
@@ -21,6 +23,7 @@ services:
       - gigco-network
     volumes:
       - ./templates:/root/templates
+      - ./certs:/app/certs:ro
     restart: unless-stopped
 
   worker:

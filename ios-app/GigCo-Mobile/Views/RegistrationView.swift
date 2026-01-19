@@ -38,19 +38,12 @@ struct RegistrationView: View {
                 
                 Section(header: Text("Security")) {
                     HStack {
-                        ZStack(alignment: .leading) {
+                        if showPassword {
                             TextField("Password", text: $password)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
-                                .foregroundColor(showPassword ? Color.primary : .clear)
-
-                            if !showPassword && !password.isEmpty {
-                                Text(String(repeating: "•", count: password.count))
-                                    .foregroundColor(.black)
-                                    .font(.system(size: 16))
-                                    .allowsHitTesting(false)
-                                    .padding(.leading, 8)
-                            }
+                        } else {
+                            SecureField("Password", text: $password)
                         }
 
                         Button(action: {
@@ -62,19 +55,12 @@ struct RegistrationView: View {
                     }
 
                     HStack {
-                        ZStack(alignment: .leading) {
+                        if showConfirmPassword {
                             TextField("Confirm Password", text: $confirmPassword)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
-                                .foregroundColor(showConfirmPassword ? Color.primary : .clear)
-
-                            if !showConfirmPassword && !confirmPassword.isEmpty {
-                                Text(String(repeating: "•", count: confirmPassword.count))
-                                    .foregroundColor(.black)
-                                    .font(.system(size: 16))
-                                    .allowsHitTesting(false)
-                                    .padding(.leading, 8)
-                            }
+                        } else {
+                            SecureField("Confirm Password", text: $confirmPassword)
                         }
 
                         Button(action: {

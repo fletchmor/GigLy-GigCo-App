@@ -19,20 +19,21 @@ class AuthService: ObservableObject {
         // Register this instance with APIService for token expiration handling
         apiService.setAuthServiceReference(self)
 
-        // Check for existing auth token and user data
-        if let token = UserDefaults.standard.string(forKey: "auth_token") {
+        // Check for existing auth token and user data from Keychain
+        if let token = KeychainHelper.shared.retrieve(forKey: KeychainHelper.Keys.authToken) {
             self.authToken = token
 
             // Try to restore user data
-            if let userData = UserDefaults.standard.data(forKey: "current_user"),
+            if let userDataString = KeychainHelper.shared.retrieve(forKey: "current_user"),
+               let userData = userDataString.data(using: .utf8),
                let user = try? JSONDecoder().decode(Person.self, from: userData) {
                 self.currentUser = user
                 self.isAuthenticated = true
-                print("🟢 AuthService.init - Restored user session: \(user.name), ID: \(user.id ?? -1)")
+                print("🟢 AuthService.init - Restored user session from Keychain: \(user.name), ID: \(user.id ?? -1)")
             } else {
                 // Token exists but no user data, clear everything
                 print("🟡 AuthService.init - Token exists but no user data, clearing session")
-                UserDefaults.standard.removeObject(forKey: "auth_token")
+                KeychainHelper.shared.delete(forKey: KeychainHelper.Keys.authToken)
                 self.authToken = nil
                 self.isAuthenticated = false
             }
@@ -116,23 +117,24 @@ class AuthService: ObservableObject {
     
     func logout() {
         apiService.clearAuthToken()
-        UserDefaults.standard.removeObject(forKey: "auth_token")
-        UserDefaults.standard.removeObject(forKey: "current_user")
+        KeychainHelper.shared.delete(forKey: KeychainHelper.Keys.authToken)
+        KeychainHelper.shared.delete(forKey: "current_user")
         authToken = nil
         currentUser = nil
         isAuthenticated = false
-        print("🟢 User logged out and session data cleared")
+        print("🟢 User logged out and session data cleared from Keychain")
     }
     
     private func setAuthenticationState(token: String, user: Person) async {
         print("🔵 Setting authentication state - User ID: \(user.id ?? -1), Name: \(user.name)")
         apiService.setAuthToken(token)
-        UserDefaults.standard.set(token, forKey: "auth_token")
+        KeychainHelper.shared.save(token, forKey: KeychainHelper.Keys.authToken)
 
-        // Save user data
-        if let userData = try? JSONEncoder().encode(user) {
-            UserDefaults.standard.set(userData, forKey: "current_user")
-            print("🟢 User data saved to UserDefaults")
+        // Save user data to Keychain
+        if let userData = try? JSONEncoder().encode(user),
+           let userDataString = String(data: userData, encoding: .utf8) {
+            KeychainHelper.shared.save(userDataString, forKey: "current_user")
+            print("🟢 User data saved to Keychain")
         } else {
             print("🔴 Failed to encode user data")
         }

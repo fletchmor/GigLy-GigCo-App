@@ -10,7 +10,12 @@ import (
 
 // GetPublicHandlers handles public GET routes (no authentication required)
 func GetPublicHandlers(r chi.Router) {
-	r.Get("/health", api.HealthCheck)
+	// Health check endpoints
+	r.Get("/health", api.HealthCheck)      // Basic health check (backwards compatible)
+	r.Get("/ready", api.ReadinessCheck)    // Kubernetes readiness probe
+	r.Get("/live", api.LivenessCheck)      // Kubernetes liveness probe
+	r.Get("/metrics", api.MetricsCheck)    // Runtime metrics
+
 	r.Get("/", middleware.ServeEmailForm)
 	r.Get("/email-submit", middleware.HandleEmailSubmission)
 

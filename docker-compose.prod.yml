@@ -1,0 +1,155 @@
+# Production Docker Compose Configuration
+# DO NOT use this file directly - use with docker-compose and env file:
+# docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  app:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - APP_ENV=production
+      - PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-require}
+      - JWT_SECRET=${JWT_SECRET}
+      - TEMPORAL_HOST=temporal:7233
+      - TLS_CERT=/app/certs/cert.pem
+      - TLS_KEY=/app/certs/key.pem
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      # Payment configuration
+      - CLOVER_API_KEY=${CLOVER_API_KEY}
+      - CLOVER_MERCHANT_ID=${CLOVER_MERCHANT_ID}
+      - CLOVER_BASE_URL=${CLOVER_BASE_URL:-https://api.clover.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    networks:
+      - gigco-network
+    volumes:
+      - ./templates:/root/templates:ro
+      - ./certs:/app/certs:ro
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - APP_ENV=production
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_SSLMODE=${DB_SSLMODE:-require}
+      - TEMPORAL_HOST=temporal:7233
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+    networks:
+      - gigco-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  temporal:
+    image: temporalio/auto-setup:1.22.0
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PWD=${DB_PASSWORD}
+      - POSTGRES_SEEDS=postgres
+      - TEMPORAL_BROADCAST_ADDRESS=0.0.0.0
+      - LOG_LEVEL=warn
+      - SERVICES=frontend,history,matching,worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gigco-network
+    restart: always
+    # Note: Temporal port is NOT exposed externally in production
+    # Access through internal network only
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    # Note: Database port is NOT exposed externally in production
+    # Access through internal network or bastion host only
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - gigco-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Note: Adminer and Temporal UI are NOT included in production
+  # Use secure methods (bastion host, VPN) to access database and temporal in production
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  gigco-network:
+    driver: bridge

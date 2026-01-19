@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -256,8 +257,8 @@ func validateRegistrationRequest(req *RegisterRequest) error {
 	}
 
 	// Validate password strength
-	if len(req.Password) < 6 {
-		return fmt.Errorf("password must be at least 6 characters long")
+	if err := validatePasswordStrength(req.Password); err != nil {
+		return err
 	}
 
 	// Validate email format
@@ -293,11 +294,89 @@ func validateRegistrationRequest(req *RegisterRequest) error {
 		return fmt.Errorf("email must be less than 255 characters")
 	}
 
-	// Role-specific validations
+	// Role-specific validations - block admin registration in production
 	if req.Role == "admin" {
-		// Only allow admin creation in development
-		// In production, this should be restricted
+		env := os.Getenv("APP_ENV")
+		if env == "production" {
+			log.Printf("BLOCKED: Admin user registration attempted in production for email: %s", req.Email)
+			return fmt.Errorf("admin registration is not allowed via public API")
+		}
 		log.Printf("Warning: Admin user registration attempted for email: %s", req.Email)
+	}
+
+	return nil
+}
+
+// validatePasswordStrength validates password meets security requirements
+func validatePasswordStrength(password string) error {
+	// Minimum length of 10 characters (NIST recommends 8+, we use 10 for better security)
+	if len(password) < 10 {
+		return fmt.Errorf("password must be at least 10 characters long")
+	}
+
+	// Maximum length to prevent DoS via bcrypt
+	if len(password) > 72 {
+		return fmt.Errorf("password must be less than 72 characters")
+	}
+
+	var (
+		hasUpper   bool
+		hasLower   bool
+		hasNumber  bool
+		hasSpecial bool
+	)
+
+	for _, char := range password {
+		switch {
+		case char >= 'A' && char <= 'Z':
+			hasUpper = true
+		case char >= 'a' && char <= 'z':
+			hasLower = true
+		case char >= '0' && char <= '9':
+			hasNumber = true
+		case char == '!' || char == '@' || char == '#' || char == '$' ||
+			char == '%' || char == '^' || char == '&' || char == '*' ||
+			char == '(' || char == ')' || char == '-' || char == '_' ||
+			char == '+' || char == '=' || char == '[' || char == ']' ||
+			char == '{' || char == '}' || char == '|' || char == '\\' ||
+			char == ':' || char == ';' || char == '"' || char == '\'' ||
+			char == '<' || char == '>' || char == ',' || char == '.' ||
+			char == '?' || char == '/' || char == '`' || char == '~':
+			hasSpecial = true
+		}
+	}
+
+	// Require at least 3 of 4 character types
+	typesPresent := 0
+	if hasUpper {
+		typesPresent++
+	}
+	if hasLower {
+		typesPresent++
+	}
+	if hasNumber {
+		typesPresent++
+	}
+	if hasSpecial {
+		typesPresent++
+	}
+
+	if typesPresent < 3 {
+		return fmt.Errorf("password must contain at least 3 of: uppercase, lowercase, numbers, special characters")
+	}
+
+	// Check for common weak passwords
+	commonPasswords := []string{
+		"password123", "123456789", "qwerty123", "abc123456",
+		"password1", "iloveyou1", "letmein123", "welcome123",
+		"admin12345", "monkey1234", "dragon1234", "master1234",
+	}
+
+	lowerPassword := strings.ToLower(password)
+	for _, common := range commonPasswords {
+		if lowerPassword == common {
+			return fmt.Errorf("password is too common, please choose a stronger password")
+		}
 	}
 
 	return nil

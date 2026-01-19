@@ -41,19 +41,12 @@ struct LoginView: View {
                         .frame(height: 44)
                     
                     HStack {
-                        ZStack(alignment: .leading) {
+                        if showPassword {
                             TextField("Password", text: $password)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled(true)
-                                .foregroundColor(showPassword ? Color.primary : .clear)
-
-                            if !showPassword && !password.isEmpty {
-                                Text(String(repeating: "•", count: password.count))
-                                    .foregroundColor(.black)
-                                    .font(.system(size: 16))
-                                    .allowsHitTesting(false)
-                                    .padding(.leading, 8)
-                            }
+                        } else {
+                            SecureField("Password", text: $password)
                         }
 
                         Button(action: {

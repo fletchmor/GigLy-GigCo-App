@@ -32,16 +32,27 @@ type JWTClaims struct {
 // InitJWT initializes the JWT secret key
 func InitJWT() {
 	secret := os.Getenv("JWT_SECRET")
+	env := os.Getenv("APP_ENV")
+
 	if secret == "" {
-		// Generate a random secret in development
+		if env == "production" {
+			log.Fatal("FATAL: JWT_SECRET must be set in production environment")
+		}
+		// Generate a random secret in development only
 		log.Println("Warning: JWT_SECRET not set, generating random secret for development")
 		randomBytes := make([]byte, 32)
 		if _, err := rand.Read(randomBytes); err != nil {
 			log.Fatal("Failed to generate JWT secret:", err)
 		}
 		secret = hex.EncodeToString(randomBytes)
-		log.Printf("Generated JWT secret: %s", secret)
+		// Note: Secret is NOT logged for security reasons
 	}
+
+	// Validate secret strength in production
+	if env == "production" && len(secret) < 32 {
+		log.Fatal("FATAL: JWT_SECRET must be at least 32 characters in production")
+	}
+
 	jwtSecret = []byte(secret)
 }
 
@@ -82,7 +93,7 @@ func ValidateJWT(tokenString string) (*JWTClaims, error) {
 		InitJWT()
 	}
 
-	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}

@@ -10,34 +10,54 @@ import Foundation
 @MainActor
 class APIService: ObservableObject {
     static let shared = APIService()
-    
+
     @Published var isConfigured = false
     private var authToken: String?
 
     // Reference to AuthService for handling token expiration
     private var authServiceRef: AuthService?
-    
+
+    // Custom URLSession for handling self-signed certificates in development
+    private lazy var urlSession: URLSession = {
+        #if DEBUG
+        // In debug builds, use delegate that accepts self-signed certificates
+        let delegate = SelfSignedCertDelegate()
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = Configuration.requestTimeout
+        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        #else
+        // In release builds, use secure delegate
+        let delegate = SecureURLSessionDelegate()
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = Configuration.requestTimeout
+        return URLSession(configuration: config, delegate: delegate, delegateQueue: nil)
+        #endif
+    }()
+
     private init() {
         configureAPI()
         loadAuthToken()
     }
     
     private func configureAPI() {
-        // Configure the base URL for the API client
-        // Use Mac's IP address for iOS simulator connectivity
-        // Try 192.168.22.233 first, fallback to localhost for debugging
-        GigCoAPIAPI.basePath = "http://192.168.22.233:8080/api/v1"
-        
+        // Configure the base URL from environment configuration
+        GigCoAPIAPI.basePath = Configuration.apiBaseURL
+
         // Configure authentication if token exists
         if let token = authToken {
             setAuthToken(token)
         }
-        
+
+        // Print configuration in debug builds
+        #if DEBUG
+        Configuration.printConfiguration()
+        #endif
+
         isConfigured = true
     }
     
     private func loadAuthToken() {
-        authToken = UserDefaults.standard.string(forKey: "auth_token")
+        authToken = KeychainHelper.shared.retrieve(forKey: KeychainHelper.Keys.authToken)
         if let token = authToken {
             setAuthToken(token)
         }
@@ -45,15 +65,15 @@ class APIService: ObservableObject {
     
     func setAuthToken(_ token: String) {
         authToken = token
-        UserDefaults.standard.set(token, forKey: "auth_token")
-        
+        KeychainHelper.shared.save(token, forKey: KeychainHelper.Keys.authToken)
+
         // Configure API client with Bearer token
         GigCoAPIAPI.customHeaders["Authorization"] = "Bearer \(token)"
     }
     
     func clearAuthToken() {
         authToken = nil
-        UserDefaults.standard.removeObject(forKey: "auth_token")
+        KeychainHelper.shared.delete(forKey: KeychainHelper.Keys.authToken)
         GigCoAPIAPI.customHeaders.removeValue(forKey: "Authorization")
     }
 
@@ -73,9 +93,9 @@ class APIService: ObservableObject {
     func login(email: String, password: String) async throws -> ApiLoginResponse {
         print("🔵 APIService.login - Making direct URLSession request")
         print("🔵 APIService.login - Email: \(email)")
-        
+
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/auth/login") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/auth/login") else {
             print("🔴 APIService.login - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -104,7 +124,7 @@ class APIService: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             print("🔵 APIService.login - Starting URLSession request...")
             
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 print("🔵 APIService.login - URLSession completed")
                 
                 if let error = error {
@@ -152,7 +172,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.register - Email: \(email), Role: \(role)")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/auth/register") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/auth/register") else {
             print("🔴 APIService.register - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -184,7 +204,7 @@ class APIService: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             print("🔵 APIService.register - Starting URLSession request...")
 
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 print("🔵 APIService.register - URLSession completed")
 
                 if let error = error {
@@ -241,7 +261,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.getJobs - Making direct URLSession request")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs") else {
             print("🔴 APIService.getJobs - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -257,7 +277,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.getJobs - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -346,7 +366,7 @@ class APIService: ObservableObject {
 
     func getMyJobs(userID: Int, role: String) async throws -> JobsListResponse {
         print("🔵 APIService.getMyJobs - UserID: \(userID), Role: \(role)")
-        var components = URLComponents(string: "http://192.168.22.233:8080/api/v1/jobs/my-jobs")!
+        var components = URLComponents(string: "\(Configuration.apiBaseURL)/jobs/my-jobs")!
         components.queryItems = [
             URLQueryItem(name: "user_id", value: String(userID)),
             URLQueryItem(name: "role", value: role)
@@ -369,7 +389,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.getMyJobs - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -416,7 +436,7 @@ class APIService: ObservableObject {
     }
 
     func getAvailableJobs() async throws -> JobsListResponse {
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/available") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/available") else {
             throw APIError.invalidConfiguration
         }
 
@@ -429,7 +449,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.getAvailableJobs - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -470,7 +490,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.acceptJob - JobID: \(jobID), GigWorkerID: \(gigWorkerID)")
         print("🔵 APIService.acceptJob - Auth token: \(authToken != nil ? "Present" : "Missing")")
 
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/accept") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/\(jobID)/accept") else {
             print("🔴 APIService.acceptJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -489,7 +509,7 @@ class APIService: ObservableObject {
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.acceptJob - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -532,7 +552,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.createJob - ConsumerID: \(consumerID)")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/create") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/create") else {
             print("🔴 APIService.createJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -574,7 +594,7 @@ class APIService: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             print("🔵 APIService.createJob - Starting URLSession request...")
 
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 print("🔵 APIService.createJob - URLSession completed")
 
                 if let error = error {
@@ -634,7 +654,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.deleteJob - JobID: \(jobID)")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/\(jobID)") else {
             print("🔴 APIService.deleteJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -650,7 +670,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.deleteJob - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -704,7 +724,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.createGigWorkerProfile - Name: \(name), Email: \(email)")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/gigworkers/create") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/gigworkers/create") else {
             print("🔴 APIService.createGigWorkerProfile - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -749,7 +769,7 @@ class APIService: ObservableObject {
         return try await withCheckedThrowingContinuation { continuation in
             print("🔵 APIService.createGigWorkerProfile - Starting URLSession request...")
 
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 print("🔵 APIService.createGigWorkerProfile - URLSession completed")
 
                 if let error = error {
@@ -806,7 +826,7 @@ class APIService: ObservableObject {
         print("🔵 APIService.healthCheck - Making direct URLSession request")
 
         // Create URL
-        guard let url = URL(string: "http://192.168.22.233:8080/health") else {
+        guard let url = URL(string: Configuration.healthCheckURL) else {
             print("🔴 APIService.healthCheck - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -817,7 +837,7 @@ class APIService: ObservableObject {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.healthCheck - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -862,7 +882,7 @@ class APIService: ObservableObject {
     func startJob(jobID: Int) async throws -> [String: Any] {
         print("🔵 APIService.startJob - JobID: \(jobID)")
 
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/start") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/\(jobID)/start") else {
             print("🔴 APIService.startJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -876,7 +896,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.startJob - Network error: \(error)")
                     continuation.resume(throwing: error)
@@ -925,7 +945,7 @@ class APIService: ObservableObject {
     func completeJob(jobID: Int) async throws -> [String: Any] {
         print("🔵 APIService.completeJob - JobID: \(jobID)")
 
-        guard let url = URL(string: "http://192.168.22.233:8080/api/v1/jobs/\(jobID)/complete") else {
+        guard let url = URL(string: "\(Configuration.apiBaseURL)/jobs/\(jobID)/complete") else {
             print("🔴 APIService.completeJob - Invalid URL")
             throw APIError.invalidConfiguration
         }
@@ -939,7 +959,7 @@ class APIService: ObservableObject {
         }
 
         return try await withCheckedThrowingContinuation { continuation in
-            let task = URLSession.shared.dataTask(with: urlRequest) { data, response, error in
+            let task = self.urlSession.dataTask(with: urlRequest) { data, response, error in
                 if let error = error {
                     print("🔴 APIService.completeJob - Network error: \(error)")
                     continuation.resume(throwing: error)
